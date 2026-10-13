@@ -1,0 +1,27 @@
+name: Release guard
+
+# main only takes release pull requests from this repository's staging branch.
+# pull_request_target runs this file as it exists on main, so a pull request
+# can't edit the guard to let itself through. It never checks out PR code and
+# has no permissions. "edited" covers a pull request retargeted to main.
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  from-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require this repository's staging branch as the source
+        if: >-
+          github.event.pull_request.head.ref != 'staging' ||
+          github.event.pull_request.head.repo.full_name != github.repository
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          echo "Pull requests into main must come from staging in this repository, not '$HEAD_REPO:$HEAD_REF'."
+          exit 1
