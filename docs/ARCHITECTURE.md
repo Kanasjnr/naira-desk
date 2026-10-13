@@ -131,7 +131,7 @@ Contract rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin
 
 | Component | Stack | Responsibility |
 |---|---|---|
-| `apps/agent` | Node 20 LTS, TypeScript, viem, Hono | Pricer, risk officer, guardian, keeper, reporter. Serves `/feed/cngn-usdt` to Stitch and `/api/*` read-only metrics. Telegram ops bot. |
+| `apps/agent` | Node 24 LTS, TypeScript, viem, Hono | Pricer, risk officer, guardian, keeper, reporter. Serves `/feed/cngn-usdt` to Stitch and `/api/*` read-only metrics. Telegram ops bot. |
 | `apps/indexer` | TypeScript, viem `getLogs`, SQLite | Reactor `Fill` (swapper = vault), vault events (`DepositRequest`, `RedeemRequest`, `EpochClosed`, `DepositEpochProcessed`, `RedeemEpochSettled`, `Claimed`, `NavSettled`, `FeeAccrued`, `Paused`), our agent transactions, counterparty independence checks. |
 | `apps/web` | Next.js, wagmi/viem, Recharts | **LP app** (deposit, claim, redeem, risk card, position) and **/proof** (judge page). Every write is tagged. |
 | `packages/chain` | viem, `@celo/attribution-tags` | The **only** place wallet clients are created (`withAttribution`). ABIs: vault, factory, reactor, ERC-8004, ERC-20, Uniswap pool. |

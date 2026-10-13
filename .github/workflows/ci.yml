@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [staging, main]
+  push:
+    branches: [staging, main]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels the older run. Runs for pushes
+# to staging and main always finish, so every merged commit gets a result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # biome ci is read-only and annotates lint errors on the PR diff.
+      - run: pnpm exec biome ci .
+      - run: pnpm typecheck
+      - run: pnpm test
