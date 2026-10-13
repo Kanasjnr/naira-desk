@@ -21,11 +21,11 @@ Early development. Nothing here is production-ready, and no vault has been deplo
 
 - Celo mainnet only.
 - Every transaction sent by this project carries the ERC-8021 attribution tag `celo_1944046be211`.
-- The agent is registered with an ERC-8004 identity.
+- The agent registers an ERC-8004 identity from its own wallet.
 
-## Repository layout
+## Design
 
-The layout will grow pull request by pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes land.
+The full design, with diagrams, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## License
 
