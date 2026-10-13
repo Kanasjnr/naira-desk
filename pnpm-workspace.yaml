@@ -5,6 +5,12 @@ packages:
 # One version of each shared tool across the workspace.
 catalog:
   "@biomejs/biome": 2.5.14
+  "@celo/attribution-tags": 0.5.0
   "@types/node": 24.19.2
   typescript: 6.0.3
+  viem: 2.56.9
   vitest: 4.1.11
+
+# Match the ox version viem pins.
+overrides:
+  "@celo/attribution-tags>ox": 0.14.45
