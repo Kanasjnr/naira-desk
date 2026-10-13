@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# One version of each shared tool across the workspace.
+catalog:
+  "@biomejs/biome": 2.5.14
+  "@types/node": 24.19.2
+  typescript: 6.0.3
+  vitest: 4.1.11
