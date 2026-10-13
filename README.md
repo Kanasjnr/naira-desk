@@ -2,7 +2,7 @@
 
 An onchain bureau de change for the naira.
 
-Like a street BDC, Naira Desk buys naira a little below the market rate and sells a little above. Unlike one, it's run by an autonomous agent, quotes around the clock on Celo, publishes every trade, and its float comes from community depositors who share the spread.
+Naira Desk trades cNGN, a naira stablecoin, onchain. Like a street BDC, it buys naira a little below the market rate and sells a little above. Unlike one, it's run by an autonomous agent, quotes around the clock on Celo, publishes every trade, and its float comes from community depositors who share the spread.
 
 Under the hood, Naira Desk runs a [Textile FX](https://app.textilecredit.com) Operator Vault for the cNGN/USD₮ corridor. Community LPs deposit into the vault. An agent prices the naira from several independent sources, reads market news through paid [buy](https://usebuy.ai) calls, and decides when to quote, when to widen and when to stop. Every fill, the vault's NAV per share and the agent's paid calls are published so anyone can verify them onchain.
 
