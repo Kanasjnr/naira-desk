@@ -8,7 +8,9 @@
 
 ## 0. In one paragraph
 
-Naira Desk is an **autonomous, community-funded naira market maker** on Celo. We deploy a Textile **Operator Vault** for cNGN/USD₮ on Celo. Community LPs deposit small amounts. Our agent prices the naira from several independent sources, reads the news through paid **buy** calls, and decides when to quote, when to be careful and when to stop. Textile's Stitch bot signs quotes with the agent's key, and Textile's Warp service co-signs them. Takers on Textile trade against the vault. The vault contract makes it impossible for us to withdraw LP funds. Everything (fills, NAV per share, P&L, paid calls, tags) is shown on a public **/proof** page that judges can verify onchain.
+Naira Desk is an **onchain bureau de change for the naira**: an autonomous, community-funded market maker on Celo. Like a street BDC, it buys a little below the market rate and sells a little above. Unlike one, it quotes around the clock, every trade is public, and its float comes from depositors who share the spread.
+
+We deploy a Textile **Operator Vault** for cNGN/USD₮ on Celo. Community LPs deposit small amounts. Our agent prices the naira from several independent sources, reads the news through paid **buy** calls, and decides when to quote, when to be careful and when to stop. Textile's Stitch bot signs quotes with the agent's key, and Textile's Warp service co-signs them. Takers on Textile trade against the vault. The vault contract makes it impossible for us to withdraw LP funds. Everything (fills, NAV per share, P&L, paid calls, tags) is shown on a public **/proof** page that judges can verify onchain.
 
 **Goals**
 1. Positive, verifiable strategy P&L and real volume on Textile (Celo).
