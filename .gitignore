@@ -1,5 +1,36 @@
 # Private planning notes, kept locally and never published
 HACKATHON_PLAN.md
 
-# OS files
+# Dependencies and build output
+node_modules/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Secrets: keys and env files never live in the repo
+.env
+.env.*
+!.env.example
+.envrc
+*.key
+*.pem
+*.keystore
+keystore*.json
+UTC--*
+/keys/
+/secrets/
+
+# Local data (SQLite and its journal/WAL side files)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Logs and OS files
+*.log
 .DS_Store

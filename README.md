@@ -29,6 +29,18 @@ Early development. Nothing here is production-ready, and no vault has been deplo
 
 The full design, with diagrams, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Development
+
+Requires Node 24 (see `.nvmrc`) and pnpm 10.
+
+```sh
+pnpm install
+pnpm check   # lint, typecheck and tests
+pnpm fix     # apply formatting and safe lint fixes
+```
+
+Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
+
 ## License
 
 [MIT](LICENSE)
