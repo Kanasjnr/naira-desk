@@ -10,7 +10,7 @@ Built for the **Agents on Open Rails** hackathon (Celo), targeting the Textile F
 
 ## Status
 
-Early development. Nothing here is production-ready, and no vault has been deployed yet.
+Early development. The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) but isn't trading yet. The agent is ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908).
 
 ## How it works
 
