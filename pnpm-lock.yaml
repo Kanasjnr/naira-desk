@@ -35,6 +35,9 @@ importers:
       '@naira-desk/chain':
         specifier: workspace:*
         version: link:packages/chain
+      '@naira-desk/pricing':
+        specifier: workspace:*
+        version: link:packages/pricing
       '@naira-desk/shared':
         specifier: workspace:*
         version: link:packages/shared
@@ -60,6 +63,28 @@ importers:
       '@celo/attribution-tags':
         specifier: 'catalog:'
         version: 0.5.0(typescript@6.0.3)(viem@2.56.9(typescript@6.0.3))
+      '@naira-desk/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.9(typescript@6.0.3)
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.11(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2))
+
+  packages/pricing:
+    dependencies:
+      '@naira-desk/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@naira-desk/shared':
         specifier: workspace:*
         version: link:../shared
