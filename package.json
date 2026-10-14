@@ -14,7 +14,8 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "agent:new-key": "node scripts/new-agent-key.ts",
     "agent:register": "node scripts/register-agent.ts",
-    "price": "node scripts/price.ts"
+    "price": "node scripts/price.ts",
+    "agent": "node apps/agent/src/main.ts"
   },
   "dependencies": {
     "@naira-desk/chain": "workspace:*",
