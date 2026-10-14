@@ -31,6 +31,16 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@naira-desk/chain':
+        specifier: workspace:*
+        version: link:packages/chain
+      '@naira-desk/shared':
+        specifier: workspace:*
+        version: link:packages/shared
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.9(typescript@6.0.3)
     devDependencies:
       '@biomejs/biome':
         specifier: 'catalog:'
