@@ -2,6 +2,8 @@ import { CELO_CHAIN_ID } from "@naira-desk/shared";
 import { createPublicClient, type Transport } from "viem";
 import { celo } from "viem/chains";
 
+export const DEFAULT_RPC_URL = "https://forno.celo.org";
+
 export function createCeloPublicClient(transport: Transport) {
   return createPublicClient({ chain: celo, transport });
 }

@@ -12,7 +12,8 @@ type Client = Pick<ReturnType<typeof createCeloPublicClient>, "getBlock" | "read
 
 // Time-weighted price from the Uniswap v3 cNGN/USDT pool. USDT is token0 and
 // cNGN token1, both with 6 decimals, so 1.0001^-tick is USDT per cNGN.
-export async function uniswapTwap(client: Client, seconds = 600): Promise<PricePoint> {
+// Two minutes tracks the market without letting a single block move the price.
+export async function uniswapTwap(client: Client, seconds = 120): Promise<PricePoint> {
   if (!Number.isInteger(seconds) || seconds <= 0) {
     throw new Error(`invalid TWAP window: ${seconds}`);
   }
