@@ -15,8 +15,8 @@ Early development. Nothing here is production-ready, and no vault has been deplo
 ## How it works
 
 - **Vault:** a Textile Operator Vault (cNGN/USD₮) on Celo mainnet. LPs deposit USD₮ or cNGN and receive shares. The operator can't withdraw LP funds; the contract enforces it.
-- **Execution:** Textile's Stitch bot answers RFQs with the agent's key as the vault's strategy signer. Textile's Warp service co-signs every fill.
-- **Agent:** prices cNGN, sets a risk regime from data and news, can pause the vault, and reports.
+- **Execution:** the agent's wallet owns the vault. Textile's Stitch bot answers RFQs with its own key as the vault's strategy signer, and Textile's Warp service co-signs every fill.
+- **Agent:** prices cNGN, sets a risk regime from data and news, can stop quoting, and reports.
 - **Proof:** a public page with fills, P&L, NAV per share, paid calls and attribution coverage.
 
 ## Hackathon requirements
