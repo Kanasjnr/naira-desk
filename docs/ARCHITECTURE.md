@@ -1,6 +1,6 @@
 # Naira Desk: Architecture
 
-*Version 0.1, 13 Oct 2026. Hackathon: Agents on Open Rails (Celo). Tracks: **Textile FX** (main) and **Build with buy** (add-on). Attribution code: `celo_1944046be211`.*
+*Version 0.2, 14 Oct 2026. Hackathon: Agents on Open Rails (Celo). Tracks: **Textile FX** (main) and **Build with buy** (add-on). Attribution code: `celo_1944046be211`.*
 
 **Legend:** ✅ verified (onchain, source code or docs, 13 Oct) · ⚠️ assumption to confirm · ❓ open question that blocks something.
 
@@ -10,7 +10,7 @@
 
 Naira Desk is an **onchain bureau de change for the naira**: an autonomous, community-funded market maker on Celo. Like a street BDC, it buys a little below the market rate and sells a little above. Unlike one, it quotes around the clock, every trade is public, and its float comes from depositors who share the spread.
 
-We deploy a Textile **Operator Vault** for cNGN/USD₮ on Celo. Community LPs deposit small amounts. Our agent prices the naira from several independent sources, reads the news through paid **buy** calls, and decides when to quote, when to be careful and when to stop. Textile's Stitch bot signs quotes with the agent's key, and Textile's Warp service co-signs them. Takers on Textile trade against the vault. The vault contract makes it impossible for us to withdraw LP funds. Everything (fills, NAV per share, P&L, paid calls, tags) is shown on a public **/proof** page that judges can verify onchain.
+We deploy a Textile **Operator Vault** for cNGN/USD₮ on Celo. Community LPs deposit small amounts. Our agent prices the naira from several independent sources, reads the news through paid **buy** calls, and decides when to quote, when to be careful and when to stop. The agent's wallet owns the vault. Textile's Stitch bot signs quotes with its own key, and Textile's Warp service co-signs them. Takers on Textile trade against the vault. The vault contract makes it impossible for us to withdraw LP funds. Everything (fills, NAV per share, P&L, paid calls, tags) is shown on a public **/proof** page that judges can verify onchain.
 
 **Goals**
 1. Positive, verifiable strategy P&L and real volume on Textile (Celo).
@@ -28,14 +28,14 @@ We deploy a Textile **Operator Vault** for cNGN/USD₮ on Celo. Community LPs de
 |---|---|---|---|
 | 1 | `OperatorVaultFactory.deployVault` only checks `msg.sender == init.operatorAdmin`. Deposits have no allowlist. | ✅ factory and vault source, Blockscout-verified | We can deploy our own vault, and community LPs can fund it directly. |
 | 2 | Every vault fill needs **two EOA signatures** (strategy and risk) over the Permit2 digest, plus order-policy checks: reactor, swapper = vault, trading epoch in the nonce, lifetime cap, per-order caps, quotable inventory, close-only, preferred fillers. | ✅ `VaultPolicy.validateEnvelope` | The contract enforces safety, not our code. |
-| 3 | Stitch docs: the **venue supplies "Warp" co-signing**, and "the dealer must obtain the independent risk signature through its authorized Warp integration." Both existing Celo vaults use the same `riskSigner` `0x9bC2…32a3` and `riskAdmin` `0x5172…bA4`. | ✅ docs, onchain, and confirmed by the Textile team | **Risk signer = Textile Warp, not our own agent.** Our risk logic moves *before* signing (pricer, risk officer) and *after* (guardian). Textile confirmed Warp co-signs fills for our vault. |
-| 4 | Stitch already has **vault modules**: inventory balancing, dynamic spreads, spot rebalancing. It also co-signs NAV attestations. | ✅ `docs/modules.md` | We **don't rebuild** quoting maths. Our agent adds what Stitch lacks: multi-source naira pricing, news regime, guardian, keeper, buy, proof. |
+| 3 | Stitch docs: the **venue supplies "Warp" co-signing**, and "the dealer must obtain the independent risk signature through its authorized Warp integration." Both existing Celo vaults use the same `riskSigner` `0x9bC2…32a3` and `riskAdmin` `0x5172…bA4`. | ✅ docs, onchain, and confirmed by the Textile team | **Risk signer = Textile Warp, not our own agent.** Our risk logic moves *before* signing (pricer, risk officer) and *after* (watchdog). Textile confirmed Warp co-signs fills for our vault. |
+| 4 | Stitch already has **vault modules**: inventory balancing, dynamic spreads, spot rebalancing. It also co-signs NAV attestations. | ✅ `docs/modules.md` | We **don't rebuild** quoting maths. Our agent adds what Stitch lacks: multi-source naira pricing, news regime, watchdog, keeper, buy, proof. |
 | 5 | Stitch prices off an HTTP feed `{price, timestamp}`, where price is *stable per soft* (USD₮ per cNGN). Stale or invalid prices stop quoting. | ✅ README and ADVANCED.md | The **feed is our control surface**: price in, and a halt is a 503 response. |
 | 6 | The vault pre-approves Permit2 in its constructor. | ✅ `OperatorVault` constructor | No approval transactions are needed for trading. |
 | 7 | Onchain, a fill is `Fill(orderHash, filler = taker, swapper = maker)`. | ✅ decoded reactor logs | The maker in a fill = **our vault address**. Indexing is simple. |
 | 8 | Celo Textile, last 24h: **136 fills, 13 distinct takers, 5 makers. One maker did about 75%.** | ✅ RPC log scan | Real flow, but concentrated. A small vault wins a share, not all of it. |
 | 9 | Uniswap V3 on Celo has a **cNGN/USD₮ pool** (0.01% fee, `0x6519…7d32`, about $96k USD₮ + ₦116M ≈ $180k), and also wARS and wBRL pools. | ✅ factory `getPool` and balances | Free onchain reference price and an **arbitrage guard**: never quote outside a band around Uniswap. |
-| 10 | Existing vault settings: 15-minute deposit and redeem epochs, 1-day valuation timeout, 2-day emergency exit, 2-hour order lifetime, 10% performance fee, Textile's protocol share = 10% of performance. | ✅ `cast call` and `ProtocolTermsSet` | We copy these known-good settings (section 7). |
+| 10 | Textile's deploy-page defaults: 5-minute deposit and redeem epochs, 1-day redemption cooldown, 1-day valuation timeout, 2-day emergency exit, 1-day risk signer delay, 1%/yr management and 10% performance fee, Textile's share = 10% of each fee, idle USD₮ lent on Aave with 110 kept liquid. Textile's own vaults use a 2-hour order lifetime and no reserves. | ✅ deploy page and decoded `deployVault` calls | We keep the roles and timings and set our own fees, caps and minimums (section 6.2). |
 | 11 | Textile Ramp (NGN bank) is BSC/Base only. | ✅ live API | No fiat in v1. LPs deposit USD₮ or cNGN that is already on Celo. |
 
 ---
@@ -52,11 +52,11 @@ flowchart LR
   end
   subgraph OURS["Naira Desk: our code"]
     APP["Web app: LP dashboard + /proof"]
-    AG["Agent service: pricer, risk officer, guardian, keeper, reporter"]
+    AG["Agent service: pricer, risk officer, watchdog, keeper, reporter"]
     IDX["Indexer + metrics API"]
   end
   subgraph THIRD["Third-party infrastructure"]
-    ST["Stitch: Textile's maker bot, runs our strategy key"]
+    ST["Stitch: Textile's maker bot, holds the strategy key"]
     TX["Textile RFQ venue + Warp co-signer"]
     BUY["buy gateway: x402"]
     SRC["Off-chain price sources"]
@@ -75,7 +75,7 @@ flowchart LR
   ST -->|signed vault order| TX
   TK -->|executeBatch| R
   R -->|pull from and pay into| V
-  AG -->|pause, close epochs| V
+  AG -->|owner actions, fallback epoch close| V
   AG -->|register identity| ID
   AG -->|paid data calls| BUY
   SRC --> AG
@@ -97,8 +97,8 @@ flowchart LR
 |---|---|---|---|
 | **Pricer** | our agent service | Fair value of cNGN in USD₮ from 3+ sources. Whether the price is trustworthy enough to quote. | Sign anything. Move funds. |
 | **Risk officer** | our agent service | Regime (Normal, Caution, Halted) from news (bought via buy), volatility, source divergence. Which data is worth buying. | Narrow spreads below the floor. Exceed the buy budget. |
-| **Executor** | **Stitch** (Textile code, our strategy key) | Quote size and side within vault caps, inventory balancing, dynamic spread. | Sign without our feed being fresh. Get a fill without Warp's co-sign. |
-| **Guardian** | our agent service (guardian key) | When to **pause the vault onchain**. | Move LP funds. The contract only lets the guardian pause, unpause and sweep *unrelated* tokens. |
+| **Executor** | **Stitch** (Textile code, its own strategy key S) | Quote size and side within vault caps, inventory balancing, dynamic spread. | Sign without our feed being fresh. Get a fill without Warp's co-sign. |
+| **Watchdog** | our agent service | When to **halt quoting** (feed 503) and alert the operator. | Pause the vault onchain (Textile's guardian does that). Move LP funds. |
 | **Keeper** | our agent service | Watching epochs (Stitch and Textile run them), alerting the operator if one is stuck, fallback `closeDepositEpoch`. | Set NAV (Stitch and Warp do it). |
 | **Reporter** | our agent service | What to publish: metrics, daily report, alerts. | Change trading. |
 
@@ -106,24 +106,28 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  O["Operator admin = operator personal wallet"]
-  A["Strategy signer = agent hot key, also the ERC-8004 agent wallet"]
-  G["Guardian = watchdog hot key"]
+  A["Operator admin = agent wallet A, the ERC-8004 identity"]
+  S["Strategy signer = Stitch key S"]
   W["Risk signer = Textile Warp co-signer"]
   RA["Risk admin = Textile"]
+  G["Guardian = Textile"]
   F["Fee recipient = operator personal wallet"]
   V[("Naira Desk Vault")]
-  O -->|deploy, rotate strategy signer, set guardian, set fee recipient| V
-  A -->|sign quotes and NAV, close redeem epochs| V
+  A -->|deploy, rotate strategy signer, set guardian, set fee recipient| V
+  S -->|sign quotes and NAV, close redeem epochs| V
   W -->|co-sign every quote and NAV| V
   G -->|pause and unpause| V
   RA -->|rotate risk signer, 24h delay| V
-  V -->|performance-fee shares| F
+  V -->|fee shares| F
 ```
 
 Contract rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` ✅.
 
-**Why the guardian is a separate hot key:** it can pause the vault automatically while the operator is offline. If it leaks, the worst an attacker can do is pause or unpause. The operator admin can replace it with `setGuardian`.
+**Why Stitch has its own key:** the contract lets the strategy signer close redemption epochs, so Stitch may send its own transactions, and we can't tag those. Keeping them off A keeps every transaction from the agent wallet tagged. A is a placeholder strategy signer until Stitch runs, then swaps in S with `setStrategySigner`.
+
+**Why fees go to the operator's wallet:** A is a hot key on a server, so fee shares never sit there. A can rotate the strategy signer, guardian and fee recipient, but it can't move LP funds. Ownership can move to a Safe later with `transferOperatorAdmin`.
+
+**Guardian:** Textile's preset. Our watchdog halts quoting through the feed instead. If we ever need to pause onchain ourselves, A can take the role with `setGuardian`.
 
 ---
 
@@ -131,7 +135,7 @@ Contract rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin
 
 | Component | Stack | Responsibility |
 |---|---|---|
-| `apps/agent` | Node 24 LTS, TypeScript, viem, Hono | Pricer, risk officer, guardian, keeper, reporter. Serves `/feed/cngn-usdt` to Stitch and `/api/*` read-only metrics. Telegram ops bot. |
+| `apps/agent` | Node 24 LTS, TypeScript, viem, Hono | Pricer, risk officer, watchdog, keeper, reporter. Serves `/feed/cngn-usdt` to Stitch and `/api/*` read-only metrics. Telegram ops bot. |
 | `apps/indexer` | TypeScript, viem `getLogs`, SQLite | Reactor `Fill` (swapper = vault), vault events (`DepositRequest`, `RedeemRequest`, `EpochClosed`, `DepositEpochProcessed`, `RedeemEpochSettled`, `Claimed`, `NavSettled`, `FeeAccrued`, `Paused`), our agent transactions, counterparty independence checks. |
 | `apps/web` | Next.js, wagmi/viem, Recharts | **LP app** (deposit, claim, redeem, risk card, position) and **/proof** (judge page). Every write is tagged. |
 | `packages/chain` | viem, `@celo/attribution-tags` | The **only** place wallet clients are created (`withAttribution`). ABIs: vault, factory, reactor, ERC-8004, ERC-20, Uniswap pool. |
@@ -191,35 +195,37 @@ Stitch is a small Rust binary, so 1 vCPU and 1 GB RAM is enough.
 | USD₮ (6 decimals) | `0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e` | ✅ |
 | ERC-8004 Identity / Reputation | `0x8004A169…a432` / `0x8004BAa1…9b63` | ✅ |
 | Uniswap V3 cNGN/USD₮ 0.01% | `0x6519d56Eb0A69FC0338657784c783B169b8f7d32` | ✅ |
-| Textile Warp risk signer (used by existing vaults) | `0x9bC2f7601f22fFA95bD9dDbF9Bc11d06f54B32a3` | ✅ Warp co-signs our vault. Take the exact value from the deploy-page preset. |
-| Textile risk admin (used by existing vaults) | `0x51727A09b55d56BF8f3CBe61f460327330aECbA4` | ✅ take the exact value from the deploy-page preset |
+| Textile Warp risk signer | `0x9bC2f7601f22fFA95bD9dDbF9Bc11d06f54B32a3` | ✅ deploy-page preset. Warp co-signs our vault. |
+| Textile risk admin | `0x51727A09b55d56BF8f3CBe61f460327330aECbA4` | ✅ deploy-page preset |
+| Textile guardian | `0x15c73f757f9db89CdeB366676C294b8A6aa4B76d` | ✅ deploy-page preset |
+| Aave v3 pool (yield adapter) | `0x3E59A31363E2ad014dcbc521c4a0d5757d9f3402` | ✅ factory's `yieldAdapterImplementation` |
 
-### 6.2 Proposed vault parameters (`VaultInit`)
+### 6.2 Vault parameters (`VaultInit`)
 
-**Textile's guidance:** copy the presets from `app.textilecredit.com/s/vaults/deploy` (risk signer, fee collector, Textile fee shares, and so on), and set the **operator (strategy) signer to the Stitch wallet**. Deploying from our own script is fine if most values stay the same. The values below are our starting point; **the deploy-page presets win wherever they differ.**
+**Textile's guidance:** copy the presets from `app.textilecredit.com/s/vaults/deploy` and set the strategy signer to the Stitch wallet. Deploying from our own script is fine. `pnpm vault:deploy` keeps the presets for roles and timings and sets our own fees, caps and minimums. The values live in `packages/chain/src/vault.ts`. Everything except the roles, fee recipient and liquid floor is fixed once deployed.
 
 | Field | Value | Why |
 |---|---|---|
-| name / symbol | `Naira Desk cNGN/USDT Vault` / `ndUSDT-cNGN` | Within the 64- and 16-byte limits ✅ |
+| name / symbol | `Naira Desk USDT/cNGN` / `tvUSDT-cNGN` | Within the 64- and 16-byte limits ✅ |
 | settlementAsset / corridorAsset | USD₮ / cNGN | The corridor with the most Celo flow |
-| operatorAdmin / feeRecipient | operator wallet | The operator controls admin and receives fees |
-| strategySigner | agent key **A** | Also the ERC-8004 agent wallet |
-| riskSigner / riskAdmin | Textile Warp / Textile | ✅ deploy-page preset |
-| guardian | watchdog key **G** | Automatic pause |
-| maxOrderInputSettlement | 250 USD₮ (`250e6`) | Small blast radius while new; raise later |
-| maxOrderInputCorridor | ₦350,000 (`350000e6`) | About the same in USD |
-| minReserveSettlement / Corridor | 0 / 0 | Keep simple |
-| maxOrderLifetime | 7200 s | Same as existing vaults |
-| deposit / redemption epoch | 900 s / 900 s | Same as existing |
-| redemptionCloseCooldown | 86,400 s | Same as existing (⚠️ consider 3,600 for friendlier LP exits) |
-| valuationTimeout / emergencyExitTimeout | 86,400 / 172,800 s | Must satisfy emergency > valuation ✅ |
+| operatorAdmin | agent wallet **A** | The registered agent owns its vault, and the deploy is tagged |
+| strategySigner | **A** at deploy, then Stitch key **S** | S comes from the Stitch panel. A swaps it in with `setStrategySigner` |
+| feeRecipient | operator personal wallet | Fee shares stay off the hot key |
+| riskSigner / riskAdmin / guardian | Textile Warp / Textile / Textile | ✅ deploy-page preset |
+| maxOrderInputSettlement | 1,000 USD₮ (`1000e6`) | Caps the damage from one bad fill. Stitch can quote smaller |
+| maxOrderInputCorridor | ₦1,400,000 (`1400000e6`) | About the same in USD |
+| minReserveSettlement / Corridor | 0 / 0 | Same as Textile's own vaults |
+| maxOrderLifetime | 7200 s | Same as Textile's own vaults |
+| deposit / redemption epoch | 300 s / 300 s | ✅ deploy-page preset |
+| redemptionCloseCooldown | 86,400 s | ✅ deploy-page preset |
+| valuationTimeout / emergencyExitTimeout | 86,400 / 172,800 s | ✅ deploy-page preset. Must satisfy emergency > valuation ✅ |
 | managementFeeWad / performanceFeeWad | 0 / 0.20e18 | Our choice. No fee on deposits; the operator earns 20% of profit, only above the high-water mark. The contract caps it at 50%. |
-| protocolManagementShareWad / PerformanceShareWad | 0 / 0.10e18 | Matches the existing vault. Use the deploy-page preset. |
-| riskSignerDelay | 86,400 s | Same as existing |
-| minDepositAssets | 2 USD₮ (`2e6`) | Small community tickets |
-| minDepositCorridor | ₦3,000 (`3000e6`) | Lets cNGN holders deposit cNGN |
+| protocolManagementShareWad / PerformanceShareWad | 0.10e18 / 0.10e18 | ✅ deploy-page preset: Textile gets 10% of each fee |
+| riskSignerDelay | 86,400 s | ✅ deploy-page preset |
+| minDepositAssets | 5 USD₮ (`5e6`) | Small community tickets |
+| minDepositCorridor | ₦7,000 (`7000e6`) | Lets cNGN holders deposit cNGN. Zero would turn that off for good |
 | minRedeemShares | 1 share (`1e6`) | Smaller amounts allowed when redeeming a whole balance ✅ |
-| enableYield / minLiquidSettlement | false / 0 | No yield adapter in v1 |
+| enableYield / minLiquidSettlement | true / 1,000 USD₮ | Idle USD₮ above the floor earns Aave yield. Fills can only pull liquid USD₮, so the floor covers one full order. The floor can change later |
 | perfFloorEnabled | true | High-water mark: no fee until a new all-time-high price per share |
 
 ---
@@ -236,17 +242,18 @@ sequenceDiagram
   participant ID as ERC-8004 Registry
   participant TX as Textile
   participant FAC as Vault factory
+  participant V as Vault
   participant ST as Stitch
-  Y->>SC: create keys A (agent) and G (guardian) on the VM
+  Y->>SC: create agent key A
   SC->>ID: register(agentURI) from A, first tagged tx
   ID-->>SC: Registered(agentId)
-  Y->>TX: request maker key + Warp co-signing for our vault
-  TX-->>Y: maker credential, confirmed risk signer and admin
-  SC->>FAC: deployVault(init) from operator wallet, tagged
+  SC->>FAC: deployVault(init) from A, tagged
   FAC-->>SC: VaultDeployed(vault)
+  Y->>ST: install Stitch, add the corridor, Stitch creates key S
+  ST->>TX: wizard verifies the operator, maker stream connected
+  SC->>V: setStrategySigner(S) from A, tagged
   SC->>ID: setAgentURI with vault + agentId in the agent card
-  Y->>ST: configure vault mode, feed URL, connect RFQ
-  ST->>TX: maker stream connected, corridor accepted
+  Y->>ST: configure vault mode and feed URL
 ```
 
 ### 7.2 Core loop: RFQ quote to fill
@@ -256,7 +263,7 @@ sequenceDiagram
   autonumber
   participant T as Taker
   participant X as Textile RFQ venue
-  participant S as Stitch (key A)
+  participant S as Stitch (key S)
   participant P as Pricer feed
   participant W as Warp co-signer
   participant R as Reactor
@@ -268,7 +275,7 @@ sequenceDiagram
   T->>X: POST /v2/rfq/request (size, taker)
   X->>S: quote request on the maker stream
   S->>S: check caps, quotable inventory, spread, inventory balance
-  S-->>X: vault order signed by A
+  S-->>X: vault order signed by S
   X->>W: risk co-signature request
   W-->>X: risk signature
   X-->>T: firm quote + swap calldata, valid about 60s
@@ -296,14 +303,14 @@ sequenceDiagram
   L->>A: connect wallet, read risk card, enter 5 USDT
   A->>V: approve USDT (tagged)
   A->>V: requestDeposit(5e6, L, L) (tagged)
-  Note over V: queued, not tradable, cancellable until the 15-min cutoff
+  Note over V: queued, not tradable, cancellable until the 5-min cutoff
   K->>V: closeDepositEpoch only if Stitch has not, after cutoff (fallback, tagged)
-  N->>N: build NAV attestation, sign with A, Warp co-signs
-  N->>V: processDepositEpoch(attestation, sigA, sigWarp)
+  N->>N: build NAV attestation, sign with S, Warp co-signs
+  N->>V: processDepositEpoch(attestation, sigS, sigWarp)
   Note over V: shares minted at post-fee NAV
   L->>A: open app, press Claim
   A->>V: claim(requestId, L, L) (tagged)
-  V-->>L: ndUSDT-cNGN shares
+  V-->>L: tvUSDT-cNGN shares
 ```
 
 ✅ Confirmed by Textile: **Stitch and Textile handle epochs and NAV attestations.** Our keeper only watches them, alerts the operator if one is stuck, and can send the permissionless `closeDepositEpoch` as a fallback.
@@ -324,7 +331,7 @@ sequenceDiagram
   N->>V: closeRedeemEpoch(epochId), sent by Stitch
   K->>K: watch the epoch, alert the operator if it is stuck
   Note over V: trading epoch bumps, vault is close-only (can only sell cNGN) until settled
-  N->>V: settleRedeemEpoch(attestation, sigA, sigWarp)
+  N->>V: settleRedeemEpoch(attestation, sigS, sigWarp)
   Note over V: pro-rata USDT + cNGN reserved for redeemers
   L->>A: Claim
   A->>V: claim(requestId, L, L) (tagged)
@@ -340,7 +347,7 @@ sequenceDiagram
 flowchart TD
   S1["Textile tickers USDT_NGN"] --> NORM
   S2["Textile RFQ preview on Celo, both sides"] --> NORM
-  S3["Uniswap V3 cNGN/USDT, 10-min TWAP"] --> NORM
+  S3["Uniswap V3 cNGN/USDT, 2-min TWAP"] --> NORM
   S4["Nigerian market source, e.g. exchange or aggregator"] --> NORM
   NORM["Normalize to USDT per cNGN, keep source timestamp"] --> FRESH{"Source fresh, under 60s?"}
   FRESH -->|no| DROP["Ignore this source"]
@@ -359,7 +366,7 @@ Inventory balancing and dynamic spread happen **inside Stitch** (modules), so we
 
 **Why the Uniswap band matters:** if our quote drifts away from the Uniswap pool price, arbitrageurs will hit it immediately and LPs lose. The band is the anti-arbitrage guard. Thresholds (60s, 50 bps, band width) are starting values to tune on 17–19 Oct.
 
-### 7.6 Risk regime (Risk officer + Guardian)
+### 7.6 Risk regime (Risk officer + Watchdog)
 
 ```mermaid
 stateDiagram-v2
@@ -369,7 +376,7 @@ stateDiagram-v2
   Normal --> Halted: feed invalid, Uniswap band breach, or Stitch unhealthy
   Caution --> Halted: severe CBN or FX policy news, or NAV down over 2pct in 1h
   Halted --> Caution: conditions clear for 30 min, automatic
-  Halted --> Paused: NAV down over 3pct in 24h, suspected exploit, or guardian rule
+  Halted --> Paused: NAV down over 3pct in 24h or suspected exploit, Textile's guardian pauses
   Paused --> Caution: human /resume only
 ```
 
@@ -378,9 +385,9 @@ stateDiagram-v2
 | Normal | live | `normal.toml` | — |
 | Caution | live | `caution.toml`: wider spread, half size (restart, at most a few per day) | — |
 | Halted | 503 | stops quoting (stale feed) | — |
-| Paused | 503 | stopped | `guardian.pause()`: invalidates all outstanding orders ✅ |
+| Paused | 503 | stopped | Textile's guardian calls `pause()`, which invalidates all outstanding orders ✅ |
 
-The rule while the operator is offline: the agent may **stop itself** automatically, but **only the operator** can resume after an onchain pause.
+The rule while the operator is offline: the agent may **stop itself** automatically, but **only the operator** can resume. An onchain pause goes through Textile's guardian.
 
 ### 7.7 Intel loop with buy (Risk officer)
 
@@ -415,7 +422,7 @@ sequenceDiagram
 
 Budget: **$0.20/day hard cap, $5 total**, enforced in code. ⚠️ We pay with our own x402 client using key A, so the payer is the registered agent wallet. If the gateway needs the `@celo/buy` client, check whether it can use key A.
 
-### 7.8 Guardian (watchdog) rules
+### 7.8 Watchdog rules
 
 ```mermaid
 flowchart TD
@@ -426,7 +433,7 @@ flowchart TD
   H2 -->|yes| H3{"Mark-to-market NAV drop over 2pct in 1h?"}
   H3 -->|yes| HALT1
   H3 -->|no| H4{"NAV drop over 3pct in 24h, or fill far outside fair value?"}
-  H4 -->|yes| PAUSE["guardian.pause onchain, alert, wait for human"]
+  H4 -->|yes| PAUSE["Halted, urgent alert, operator asks Textile to pause"]
   H4 -->|no| H5{"Agent wallet gas low or buy budget hit?"}
   H5 -->|yes| WARN["Alert only"]
   H5 -->|no| OK["OK"]
@@ -462,7 +469,7 @@ journey
     Opens Naira Desk, reads the risk card: 3: LP
   section Deposit
     Connects wallet and deposits 5 USDT: 4: LP
-    Waits up to 15 minutes for the epoch: 2: LP
+    Waits up to 5 minutes for the epoch: 2: LP
     Claims vault shares: 4: LP
   section Hold
     Tracks share price and vault P&L on /proof: 5: LP
@@ -488,9 +495,9 @@ Nothing new for them. They use the Textile app or API as usual, and our vault is
 ```mermaid
 flowchart LR
   subgraph SETUP["Setup, once"]
-    K["Generate keys A and G on VM"] --> R1["Register 8004 identity"]
-    R1 --> D1["Deploy vault from operator wallet"]
-    D1 --> S1["Connect Stitch in vault mode"]
+    K["Generate agent key A"] --> R1["Register 8004 identity"]
+    R1 --> D1["Deploy vault from A"]
+    D1 --> S1["Connect Stitch in vault mode, swap in key S"]
   end
   subgraph DAILY["Daily, 2 minutes"]
     TG1["Read Telegram daily report"] --> CHK{"Anything red?"}
@@ -522,13 +529,13 @@ flowchart TD
 | Transaction | Sent by | Tagged? | How |
 |---|---|---|---|
 | `register`, `setAgentURI` (ERC-8004) | agent A | ✅ | viem `withAttribution(["celo_1944046be211"])` in `packages/chain` |
-| `deployVault` | operator wallet via our script | ✅ | same client wrapper |
+| `deployVault`, `setStrategySigner` and other owner actions | agent A | ✅ | same client wrapper |
 | `closeDepositEpoch` fallback (only if stuck) | keeper (A) | ✅ | same |
-| `pause`, `unpause` | guardian G | ✅ | same |
+| `pause`, `unpause` | Textile's guardian | ❌ not ours | emergencies only |
 | LP `approve`, `requestDeposit`, `requestRedeem`, `claim` | **LP wallets (independent)** | ✅ | wagmi `dataSuffix` in `apps/web` |
 | ERC-8004 `giveFeedback` from LPs (stretch) | LP wallets | ✅ | same |
 | RFQ fill `executeBatch` | taker | ❌ not ours | Maker is visible as `Fill.swapper = vault` ✅ |
-| epoch closes, `processDepositEpoch`, `settleRedeemEpoch` | Stitch / Textile ✅ | ❌ not ours | Textile confirmed they handle epochs and NAV |
+| epoch closes, `processDepositEpoch`, `settleRedeemEpoch` | Stitch (key S) / Textile ✅ | ❌ not ours | Textile confirmed they handle epochs and NAV. S isn't the agent wallet, so A stays fully tagged |
 | buy x402 settlements | facilitator | ❌ (facilitator doesn't tag yet) | Payer = A |
 
 **Agent card** (`/.well-known/agent-registration.json`):
@@ -571,7 +578,7 @@ The card links agent, vault and repo so the judges' query can connect vault fill
 | `GET /api/fills`, `/api/purchases`, `/api/regime`, `/api/nav` | /proof | paginated lists with tx links |
 | `GET /.well-known/agent-registration.json` | ERC-8004, 8004scan | agent card |
 
-Telegram commands: `/status`, `/halt` (soft), `/pause` (onchain, guardian), `/resume` (human-only resume), `/report`.
+Telegram commands: `/status`, `/halt` (stop quoting), `/resume` (human-only resume), `/report`.
 
 ---
 
@@ -579,10 +586,10 @@ Telegram commands: `/status`, `/halt` (soft), `/pause` (onchain, guardian), `/re
 
 | Threat | Impact | Mitigation |
 |---|---|---|
-| Strategy key A leaks | Attacker can sign orders | Still needs Warp's co-sign and vault caps. The operator calls `setStrategySigner` (invalidates every order ✅); the guardian pauses. |
-| Guardian key G leaks | Pause/unpause griefing | Can't move LP assets ✅. The operator calls `setGuardian`. |
+| Stitch key S leaks | Attacker can sign orders | Still needs Warp's co-sign and vault caps. A calls `setStrategySigner`, which invalidates every order ✅ |
+| Agent key A leaks | Attacker gets the owner actions: rotate S, guardian and fee recipient, or take ownership | Can't move LP assets ✅, and every order still needs Warp. Fees already paid sit in the operator's wallet. Move ownership to a Safe with `transferOperatorAdmin` once the vault holds real money. |
 | Bad or stale price source | Mispriced quotes | Median of 3+ sources, divergence check, Uniswap band, Stitch rejects stale feeds ✅ |
-| Naira gap or arbitrage wave | LP losses | Regime, Uniswap band, per-order caps, NAV-drop pause |
+| Naira gap or arbitrage wave | LP losses | Regime, Uniswap band, per-order caps, NAV-drop halt |
 | Server down while the operator is offline | No quotes | Fails safe. LPs can still request redemption; forced in-kind exit after 48h ✅ |
 | Textile or Warp down | No fills | Fails safe |
 | Bug in LP app | Bad UX | The contract enforces everything; the app never holds funds |
@@ -590,8 +597,8 @@ Telegram commands: `/status`, `/halt` (soft), `/pause` (onchain, guardian), `/re
 | Regulatory (pooling public money) | Legal risk | Small caps, invite-only, clear risk card, no promised yield, honest disclosure |
 
 **Key handling:**
-- Keys A and G are generated on the VM, stored as files with `chmod 600`, never in the repo or chat.
-- The operator wallet stays on a phone or hardware wallet and only signs deploy and admin actions.
+- Key A is stored as a file with `chmod 600`, never in the repo or chat. Stitch generates and keeps key S.
+- The operator wallet stays on a phone or hardware wallet and only receives fees.
 
 ---
 
@@ -600,7 +607,7 @@ Telegram commands: `/status`, `/halt` (soft), `/pause` (onchain, guardian), `/re
 ```
 naira-desk/
 ├─ apps/
-│  ├─ agent/      pricer, risk-officer, guardian, keeper, reporter, feed + metrics API, telegram
+│  ├─ agent/      pricer, risk-officer, watchdog, keeper, reporter, feed + metrics API, telegram
 │  ├─ indexer/    reactor + vault event indexer, P&L, independence checks
 │  └─ web/        LP app + /proof (Next.js)
 ├─ packages/
@@ -634,7 +641,7 @@ gantt
   section Vault
   Deploy vault and Stitch vault mode  :v1, 2026-10-19, 3d
   LP web app                          :v2, 2026-10-21, 4d
-  Guardian and keeper                 :v3, 2026-10-22, 3d
+  Watchdog and keeper                 :v3, 2026-10-22, 3d
   section Intel
   buy integration                     :b1, 2026-10-23, 2d
   section Ship
@@ -666,7 +673,8 @@ gantt
 - ✅ The attribution code `celo_1944046be211` is issued by the program and isn't derived from the repo name.
 
 **Rules that follow:**
-- ⚠️ Stitch never sends transactions from agent key A (for example "Approve allowances"). Vaults don't need approvals, and A's first transaction must be our tagged ERC-8004 registration.
+- ✅ Stitch signs with its own key S, never A. The vault lets the strategy signer close redemption epochs, so anything Stitch sends comes from S, untagged. A's transactions go only through our tagged client.
+- ⚠️ Skip Stitch's "Approve allowances": vaults don't need approvals.
 
 **Open:**
 1. ❓ Listing the vault on `/s/vaults` once it's live, for LP discovery.
@@ -684,5 +692,4 @@ gantt
 - Fiat on/off-ramp.
 - MiniPay mini-app.
 - Our own risk co-signer.
-- Yield adapter.
 - Automatic spot rebalancing to a dealer (Stitch supports it, but we have no dealer).
