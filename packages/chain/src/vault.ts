@@ -3,6 +3,8 @@ import { type Address, parseAbi, parseEther, parseUnits } from "viem";
 
 export const VAULT_FACTORY = "0x88104decA449C797632AfdcA77A3140b24cD844A";
 
+export const VAULT = "0xD7137d85607BE18628CE00B1020895cEBceEAD6C";
+
 // Textile's keys, as preset on its vault deploy page.
 const TEXTILE_ROLES = {
   riskSigner: "0x9bC2f7601f22fFA95bD9dDbF9Bc11d06f54B32a3",
