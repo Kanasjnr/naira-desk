@@ -1,6 +1,6 @@
 import { fromDataSuffix, withAttribution } from "@celo/attribution-tags";
 import { ATTRIBUTION_CODE } from "@naira-desk/shared";
-import { createWalletClient, type Hex, type LocalAccount, type Transport } from "viem";
+import { createWalletClient, type Hash, type Hex, type LocalAccount, type Transport } from "viem";
 import { privateKeyToAccount, toAccount } from "viem/accounts";
 import { celo } from "viem/chains";
 
@@ -22,6 +22,14 @@ export function hasOurTag(data: Hex) {
   const tag = fromDataSuffix(data);
   if (!tag) return false;
   return tag.schemaId === 0 ? tag.codes.includes(ATTRIBUTION_CODE) : tag.app === ATTRIBUTION_CODE;
+}
+
+type TransactionReader = { getTransaction(args: { hash: Hash }): Promise<{ input: Hex }> };
+
+// Unlike the SDK's verifyTx, lookup failures throw instead of reading as untagged.
+export async function isTxTagged(client: TransactionReader, hash: Hash) {
+  const { input } = await client.getTransaction({ hash });
+  return hasOurTag(input);
 }
 
 export function requireTagOnSign(account: LocalAccount) {

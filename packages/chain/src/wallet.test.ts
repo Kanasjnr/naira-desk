@@ -5,15 +5,18 @@ import {
   custom,
   encodeFunctionData,
   erc20Abi,
+  type Hash,
   type Hex,
   keccak256,
   parseTransaction,
 } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
+import { createCeloPublicClient } from "./public.ts";
 import {
   createTaggedWalletClient,
   hasOurTag,
+  isTxTagged,
   isUntaggedError,
   requireTagOnSign,
 } from "./wallet.ts";
@@ -115,5 +118,53 @@ describe("requireTagOnSign", () => {
   it("refuses untagged ones", async () => {
     const error = await signer.signTransaction({ ...tx, data: transfer }).catch((e: unknown) => e);
     expect(isUntaggedError(error)).toBe(true);
+  });
+});
+
+describe("isTxTagged", () => {
+  const tagged: Hash = `0x${"aa".repeat(32)}`;
+  const untagged: Hash = `0x${"bb".repeat(32)}`;
+  const mined: Record<Hash, Hex> = {
+    [tagged]: `${transfer}${suffix.slice(2)}`,
+    [untagged]: transfer,
+  };
+  const client = createCeloPublicClient(
+    custom({
+      async request({ method, params }: { method: string; params?: unknown }) {
+        if (method !== "eth_getTransactionByHash")
+          throw new Error(`unexpected rpc call: ${method}`);
+        const [hash] = params as [Hash];
+        const input = mined[hash];
+        if (!input) return null;
+        return {
+          hash,
+          input,
+          blockHash: `0x${"11".repeat(32)}`,
+          blockNumber: "0x1",
+          transactionIndex: "0x0",
+          from: recipient,
+          to: usdt,
+          nonce: "0x0",
+          value: "0x0",
+          gas: "0x5208",
+          maxFeePerGas: "0x1",
+          maxPriorityFeePerGas: "0x1",
+          type: "0x2",
+          chainId: "0xa4ec",
+          v: "0x0",
+          r: "0x1",
+          s: "0x1",
+        };
+      },
+    }),
+  );
+
+  it("reads the tag from a mined transaction", async () => {
+    expect(await isTxTagged(client, tagged)).toBe(true);
+    expect(await isTxTagged(client, untagged)).toBe(false);
+  });
+
+  it("throws for an unknown hash instead of saying untagged", async () => {
+    await expect(isTxTagged(client, `0x${"cc".repeat(32)}`)).rejects.toThrow();
   });
 });

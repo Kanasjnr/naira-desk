@@ -11,7 +11,14 @@
     "fix": "biome check --write .",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present typecheck",
     "test": "vitest run",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "agent:new-key": "node scripts/new-agent-key.ts",
+    "agent:register": "node scripts/register-agent.ts"
+  },
+  "dependencies": {
+    "@naira-desk/chain": "workspace:*",
+    "@naira-desk/shared": "workspace:*",
+    "viem": "catalog:"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
