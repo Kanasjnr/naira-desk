@@ -1,9 +1,7 @@
-import { CELO_CHAIN_ID } from "@naira-desk/shared";
+import { CELO_CHAIN_ID, CNGN, USDT } from "@naira-desk/shared";
 import type { PricePoint } from "./types.ts";
 
 const PREVIEW_URL = "https://api.textilecredit.com/v2/rfq/preview";
-const USDT = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
-const CNGN = "0xF6829D7393dAe24509eb1E52eE8e572e2E271a4f";
 const HUNDRED_USDT = "100000000";
 
 type Preview = { data?: { status?: string; rateRay?: string; reason?: string } };
