@@ -11,7 +11,7 @@ const client = {
 
 describe("uniswapTwap", () => {
   it("turns the average tick into USDT per cNGN, stamped with the block time", async () => {
-    const { source, price, at } = await uniswapTwap(client);
+    const { source, price, at } = await uniswapTwap(client, 600);
     expect(source).toBe("uniswap");
     expect(1 / price).toBeCloseTo(1363.3, 0);
     expect(at).toBe(1_760_000_000_000);

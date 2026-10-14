@@ -1,11 +1,11 @@
 import { assertCeloMainnet, createCeloPublicClient } from "@naira-desk/chain";
-import { fairValue, type PricePoint, textileMid, uniswapTwap } from "@naira-desk/pricing";
+import { cngnSources, fairValue, type PricePoint } from "@naira-desk/pricing";
 import { http } from "viem";
 import { rpcUrl } from "./env.ts";
 
 const client = createCeloPublicClient(http(rpcUrl));
 await assertCeloMainnet(client);
-const results = await Promise.allSettled([textileMid(), uniswapTwap(client)]);
+const results = await Promise.allSettled(cngnSources(client).map((source) => source.read()));
 
 const points: PricePoint[] = [];
 for (const result of results) {
