@@ -17,9 +17,68 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "performance": {
+        "noNamespaceImport": "error"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "viem": {
+                "importNames": [
+                  "createWalletClient",
+                  "walletActions",
+                  "createTestClient",
+                  "testActions"
+                ],
+                "message": "Use createTaggedWalletClient from @naira-desk/chain."
+              },
+              "viem/accounts": {
+                "importNames": [
+                  "privateKeyToAccount",
+                  "mnemonicToAccount",
+                  "hdKeyToAccount",
+                  "toAccount",
+                  "signTransaction",
+                  "sign"
+                ],
+                "message": "Use createTaggedWalletClient from @naira-desk/chain."
+              },
+              "viem/actions": {
+                "importNames": [
+                  "sendTransaction",
+                  "sendTransactionSync",
+                  "sendRawTransaction",
+                  "sendRawTransactionSync",
+                  "writeContract",
+                  "writeContractSync",
+                  "deployContract",
+                  "sendCalls",
+                  "sendCallsSync",
+                  "signTransaction"
+                ],
+                "message": "Send through createTaggedWalletClient from @naira-desk/chain."
+              }
+            }
+          }
+        }
+      }
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/chain/src/wallet.ts", "packages/chain/src/wallet.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double"
