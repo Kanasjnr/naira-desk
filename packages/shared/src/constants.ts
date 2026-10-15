@@ -6,3 +6,9 @@ export const CELO_CHAIN_ID = 42220;
  * Every transaction we send must carry it, starting with the first one.
  */
 export const ATTRIBUTION_CODE = "celo_1944046be211";
+
+/** Tether USD on Celo, 6 decimals. */
+export const USDT = "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e";
+
+/** cNGN, the naira stablecoin, 6 decimals. */
+export const CNGN = "0xF6829D7393dAe24509eb1E52eE8e572e2E271a4f";

@@ -10,13 +10,13 @@ Built for the **Agents on Open Rails** hackathon (Celo), targeting the Textile F
 
 ## Status
 
-Early development. Nothing here is production-ready, and no vault has been deployed yet.
+Early development. The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) but isn't trading yet. The agent is ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908).
 
 ## How it works
 
 - **Vault:** a Textile Operator Vault (cNGN/USD₮) on Celo mainnet. LPs deposit USD₮ or cNGN and receive shares. The operator can't withdraw LP funds; the contract enforces it.
-- **Execution:** Textile's Stitch bot answers RFQs with the agent's key as the vault's strategy signer. Textile's Warp service co-signs every fill.
-- **Agent:** prices cNGN, sets a risk regime from data and news, can pause the vault, and reports.
+- **Execution:** the agent's wallet owns the vault. Textile's Stitch bot answers RFQs with its own key as the vault's strategy signer, and Textile's Warp service co-signs every fill.
+- **Agent:** prices cNGN, sets a risk regime from data and news, can stop quoting, and reports.
 - **Proof:** a public page with fills, P&L, NAV per share, paid calls and attribution coverage.
 
 ## Hackathon requirements

@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import {
   assertCeloMainnet,
   createCeloPublicClient,
@@ -7,10 +6,9 @@ import {
   identityRegistryAbi,
   isTxTagged,
   readKeyFile,
-  toDataUri,
 } from "@naira-desk/chain";
-import { CELO_CHAIN_ID } from "@naira-desk/shared";
 import { formatEther, type Hash, http, parseEventLogs } from "viem";
+import { cardFor } from "./card.ts";
 import { keyFile, rpcUrl } from "./env.ts";
 
 function stop(message: string): never {
@@ -19,16 +17,7 @@ function stop(message: string): never {
 }
 
 const dryRun = process.argv.includes("--dry-run");
-const card = JSON.parse(await readFile(new URL("../agent-card.json", import.meta.url), "utf8"));
 const registry = { address: IDENTITY_REGISTRY, abi: identityRegistryAbi } as const;
-
-const cardFor = (agentId: bigint) =>
-  toDataUri({
-    ...card,
-    registrations: [
-      { agentId: Number(agentId), agentRegistry: `eip155:${CELO_CHAIN_ID}:${IDENTITY_REGISTRY}` },
-    ],
-  });
 
 const client = createCeloPublicClient(http(rpcUrl));
 await assertCeloMainnet(client);
