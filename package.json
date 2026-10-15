@@ -15,12 +15,14 @@
     "agent:new-key": "node scripts/new-agent-key.ts",
     "agent:register": "node scripts/register-agent.ts",
     "agent:update-card": "node scripts/update-agent-card.ts",
+    "buy:search": "node scripts/buy-search.ts",
     "vault:deploy": "node scripts/deploy-vault.ts",
     "price": "node scripts/price.ts",
     "agent": "node apps/agent/src/main.ts"
   },
   "dependencies": {
     "@naira-desk/chain": "workspace:*",
+    "@naira-desk/intel": "workspace:*",
     "@naira-desk/pricing": "workspace:*",
     "@naira-desk/shared": "workspace:*",
     "viem": "catalog:"

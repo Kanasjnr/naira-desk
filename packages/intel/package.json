@@ -1,0 +1,23 @@
+{
+  "name": "@naira-desk/intel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@celo/buy-core": "catalog:",
+    "viem": "catalog:"
+  },
+  "devDependencies": {
+    "@naira-desk/chain": "workspace:*",
+    "@naira-desk/shared": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
