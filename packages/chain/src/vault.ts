@@ -3,7 +3,7 @@ import { type Address, parseAbi, parseEther, parseUnits } from "viem";
 
 export const VAULT_FACTORY = "0x88104decA449C797632AfdcA77A3140b24cD844A";
 
-export const VAULT = "0xD7137d85607BE18628CE00B1020895cEBceEAD6C";
+export const VAULT: Address = "0xD7137d85607BE18628CE00B1020895cEBceEAD6C";
 
 // Textile's keys, as preset on its vault deploy page.
 const TEXTILE_ROLES = {
@@ -17,6 +17,27 @@ export const vaultFactoryAbi = parseAbi([
   "function deployVault(VaultInit init) returns (address vault)",
   "function vaultOf(address operatorAdmin, address settlementAsset, address corridorAsset) view returns (address)",
   "event VaultDeployed(address indexed vault, address indexed operatorAdmin, address indexed settlementAsset, address corridorAsset, address strategySigner, uint256 version, string name, string symbol)",
+]);
+
+export const operatorVaultAbi = parseAbi([
+  "function operatorAdmin() view returns (address)",
+  "function strategySigner() view returns (address)",
+  "function riskSigner() view returns (address)",
+  "function guardian() view returns (address)",
+  "function feeRecipient() view returns (address)",
+  "function paused() view returns (bool)",
+  "function closeOnly() view returns (bool)",
+  "function tradingEpoch() view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
+  "function totalAssets() view returns (uint256)",
+  "function freeSettlement() view returns (uint256)",
+  "function freeCorridor() view returns (uint256)",
+  "function liquidSettlement() view returns (uint256)",
+  "function quotableSettlement() view returns (uint256)",
+  "function quotableCorridor() view returns (uint256)",
+  "function pendingSettlement() view returns (uint256)",
+  "function pendingCorridor() view returns (uint256)",
+  "function setStrategySigner(address next)",
 ]);
 
 const DAY = 86_400n;
