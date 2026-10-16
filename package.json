@@ -19,7 +19,8 @@
     "risk:check": "node scripts/risk-check.ts",
     "vault:deploy": "node scripts/deploy-vault.ts",
     "price": "node scripts/price.ts",
-    "agent": "node apps/agent/src/main.ts"
+    "agent": "node apps/agent/src/main.ts",
+    "agent:review": "node apps/agent/src/review-now.ts"
   },
   "dependencies": {
     "@naira-desk/chain": "workspace:*",

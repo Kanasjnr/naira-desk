@@ -6,5 +6,6 @@ export {
   DEFAULT_RPC_URL,
   tokenBalance,
 } from "./public.ts";
+export { REPUTATION_REGISTRY, reputationRegistryAbi } from "./reputation.ts";
 export { VAULT, VAULT_FACTORY, vaultFactoryAbi, vaultInit } from "./vault.ts";
 export { createTaggedWalletClient, hasOurTag, isTxTagged, isUntaggedError } from "./wallet.ts";

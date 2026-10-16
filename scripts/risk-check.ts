@@ -4,6 +4,7 @@ import {
   NEWS_QUERY,
   quote,
   RATES_QUERY,
+  receiptsOf,
   xSearchRequest,
 } from "@naira-desk/intel";
 import { agentBuyer, usd } from "./buyer.ts";
@@ -29,5 +30,5 @@ const naira = (rate?: number) => (rate ? `₦${rate}` : "not quoted");
 console.log(`risk ${check.level}: ${check.reason}`);
 console.log(`official ${naira(check.rates?.official)}, parallel ${naira(check.rates?.parallel)}`);
 console.log(`posts rated: ${check.posts}`);
-for (const hash of check.receipts) console.log(`paid: https://celoscan.io/tx/${hash}`);
+for (const hash of receiptsOf(check)) console.log(`paid: https://celoscan.io/tx/${hash}`);
 console.log(`spent in the last 24h: ${spentToday()}`);
