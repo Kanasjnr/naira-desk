@@ -1,4 +1,4 @@
-import type { RiskCheck } from "@naira-desk/intel";
+import type { Assessment } from "./street.ts";
 
 export type Mode = "normal" | "caution" | "halted";
 export type Trigger = "startup" | "schedule" | "price-jump" | "divergence";
@@ -9,7 +9,7 @@ export type Decision = {
   detail?: string;
   mode: Mode;
   until?: number;
-  check: RiskCheck;
+  check: Assessment;
 };
 
 const HOUR = 3_600_000;
@@ -19,7 +19,7 @@ const RECHECK = { normal: 6 * HOUR, caution: 2 * HOUR, halted: 2 * HOUR };
 // Severe news halts quoting for at least two hours; a calmer read can't lift it early.
 export function decide(
   previous: Decision | undefined,
-  check: RiskCheck,
+  check: Assessment,
   trigger: Trigger,
   now: number,
   detail?: string,

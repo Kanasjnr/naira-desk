@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Buyer, Message } from "./buy.ts";
-import { checkNairaRisk, parseRisk } from "./risk.ts";
+import { checkNairaRisk, NEWS_QUERY, parseRisk } from "./risk.ts";
 
 const post = (text: string) => ({
   type: "tweet",
@@ -10,10 +10,17 @@ const post = (text: string) => ({
   user_info: { followers_count: 731 },
 });
 
-function fakeBuyer(posts: unknown[], reply: string | Error) {
+type Feed = unknown[] | Error;
+
+function fakeBuyer(news: Feed, rates: Feed, reply: string | Error) {
   const asked: Message[][] = [];
   const buyer = {
-    searchX: async () => ({ data: { output: { timeline: posts } }, txHash: "0xsearch" }),
+    searchX: async (query: string) => {
+      const posts = query === NEWS_QUERY ? news : rates;
+      if (posts instanceof Error) throw posts;
+      const txHash = query === NEWS_QUERY ? "0xnews" : "0xrates";
+      return { data: { output: { timeline: posts } }, txHash };
+    },
     chat: async (messages: Message[]) => {
       asked.push(messages);
       if (reply instanceof Error) throw reply;
@@ -24,35 +31,63 @@ function fakeBuyer(posts: unknown[], reply: string | Error) {
 }
 
 describe("checkNairaRisk", () => {
-  it("rates the posts it bought and keeps both receipts", async () => {
+  it("rates the news, reads the street rate, and keeps every receipt", async () => {
     const { buyer, asked } = fakeBuyer(
       [post("CBN announces naira devaluation")],
-      '{"risk":"severe","reason":"devaluation announced"}',
+      [post("Black market dollar rate today: ₦1,420")],
+      '{"risk":"severe","reason":"devaluation announced","official":1331,"parallel":1420}',
     );
 
     expect(await checkNairaRisk(buyer)).toEqual({
       level: "severe",
       reason: "devaluation announced",
-      posts: 1,
-      receipts: ["0xsearch", "0xchat"],
+      rates: { official: 1331, parallel: 1420 },
+      posts: 2,
+      receipts: ["0xnews", "0xrates", "0xchat"],
     });
-    expect(asked[0]?.[1]?.content).toContain(
-      "@yebatech (731 followers): CBN announces naira devaluation",
+    const prompt = asked[0]?.[1]?.content;
+    expect(prompt).toContain(
+      "NEWS\n1. Thu Oct 15 09:52:35 +0000 2026 @yebatech (731 followers): CBN",
+    );
+    expect(prompt).toContain(
+      "RATES\n1. Thu Oct 15 09:52:35 +0000 2026 @yebatech (731 followers): Black",
     );
   });
 
   it("doesn't pay for a rating when there's nothing to rate", async () => {
-    const { buyer, asked } = fakeBuyer([], "unused");
+    const { buyer, asked } = fakeBuyer([], [], "unused");
 
-    expect(await checkNairaRisk(buyer)).toMatchObject({ level: "low", receipts: ["0xsearch"] });
+    expect(await checkNairaRisk(buyer)).toMatchObject({
+      level: "low",
+      receipts: ["0xnews", "0xrates"],
+    });
     expect(asked).toHaveLength(0);
   });
 
+  it("carries on with one search if the other fails", async () => {
+    const { buyer, asked } = fakeBuyer(
+      new Error("timeout"),
+      [post("₦1,410 at the BDC")],
+      '{"risk":"low","reason":"quiet","official":null,"parallel":1410}',
+    );
+
+    expect(await checkNairaRisk(buyer)).toMatchObject({
+      rates: { parallel: 1410 },
+      receipts: ["0xrates", "0xchat"],
+    });
+    expect(asked[0]?.[1]?.content).toContain("NEWS\nnone");
+  });
+
+  it("throws when both searches fail", async () => {
+    const { buyer } = fakeBuyer(new Error("budget"), new Error("budget"), "unused");
+    await expect(checkNairaRisk(buyer)).rejects.toThrow("budget");
+  });
+
   it("treats an unreadable or failed rating as elevated", async () => {
-    const garbled = fakeBuyer([post("naira")], "I think it's fine");
+    const garbled = fakeBuyer([post("naira")], [], "I think it's fine");
     expect(await checkNairaRisk(garbled.buyer)).toMatchObject({ level: "elevated" });
 
-    const failed = fakeBuyer([post("naira")], new Error("buy /cencori failed: 500"));
+    const failed = fakeBuyer([post("naira")], [], new Error("buy /cencori failed: 500"));
     expect(await checkNairaRisk(failed.buyer)).toMatchObject({
       level: "elevated",
       reason: "rating failed: buy /cencori failed: 500",
@@ -65,7 +100,13 @@ describe("parseRisk", () => {
     expect(parseRisk('Sure:\n```json\n{"risk": "low", "reason": "routine"}\n```')).toEqual({
       level: "low",
       reason: "routine",
+      rates: {},
     });
     expect(parseRisk('{"risk": "panic", "reason": "x"}')).toBeUndefined();
+  });
+
+  it("keeps only positive numeric rates", () => {
+    const parsed = parseRisk('{"risk":"low","reason":"r","official":"1331","parallel":1405.5}');
+    expect(parsed?.rates).toEqual({ official: undefined, parallel: 1405.5 });
   });
 });

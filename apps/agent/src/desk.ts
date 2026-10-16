@@ -1,6 +1,6 @@
-import type { RiskCheck } from "@naira-desk/intel";
 import { appendJsonl, readJsonl } from "@naira-desk/shared";
 import { type Decision, decide, type Mode, nextCheckAt, type Trigger } from "./modes.ts";
+import type { Assessment } from "./street.ts";
 
 type Log = { last(): Decision | undefined; record(decision: Decision): Promise<void> };
 
@@ -16,7 +16,7 @@ export async function openDecisions(path: string): Promise<Log> {
 }
 
 type DeskOptions = {
-  check: () => Promise<RiskCheck>;
+  check: () => Promise<Assessment>;
   log: Log;
   now?: () => number;
   cooldownMs?: number;
@@ -39,7 +39,7 @@ export function createRiskDesk({
   function review(trigger: Trigger, detail?: string) {
     running ??= (async () => {
       const result = await check().catch(
-        (error): RiskCheck => ({
+        (error): Assessment => ({
           level: "elevated",
           reason: `couldn't check: ${error instanceof Error ? error.message : error}`,
           posts: 0,
@@ -50,9 +50,14 @@ export function createRiskDesk({
       decision = decide(decision, result, trigger, now(), detail);
       await log.record(decision).catch((error) => console.error("failed to log a decision", error));
       const paid = result.receipts.map(short).join(", ") || "nothing";
+      const naira = (rate?: number) => (rate ? `₦${rate.toFixed(0)}` : "?");
+      const { street } = result;
+      const rates = street
+        ? ` | onchain ${naira(street.onchain)}, official ${naira(street.official)}, parallel ${naira(street.parallel)}`
+        : "";
       const change = previous && previous !== decision.mode ? `${previous} → ` : "";
       console.log(
-        `${change}${decision.mode} after ${trigger}${detail ? ` (${detail})` : ""}: ${result.level}, ${result.reason} [paid ${paid}]`,
+        `${change}${decision.mode} after ${trigger}${detail ? ` (${detail})` : ""}: ${result.level}, ${result.reason}${rates} [paid ${paid}]`,
       );
     })().finally(() => {
       running = undefined;
