@@ -118,5 +118,8 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
   }
 }
 
-export const receiptsOf = (check: Pick<RiskCheck, "calls">) =>
-  (check.calls ?? []).flatMap((call) => (call.txHash ? [call.txHash] : []));
+// Decisions logged before calls were recorded kept a plain list of receipts.
+export const receiptsOf = (check: { calls?: Call[]; receipts?: string[] }) =>
+  check.calls
+    ? check.calls.flatMap((call) => (call.txHash ? [call.txHash] : []))
+    : (check.receipts ?? []);

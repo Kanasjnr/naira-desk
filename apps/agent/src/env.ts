@@ -10,4 +10,5 @@ export const files = {
   decisions: env.DECISIONS_FILE || dataFile("decisions.jsonl"),
   reviews: env.REVIEWS_FILE || dataFile("reviews.jsonl"),
   sales: env.SALES_FILE || dataFile("sales.jsonl"),
+  rates: env.RATES_FILE || dataFile("rates.jsonl"),
 };

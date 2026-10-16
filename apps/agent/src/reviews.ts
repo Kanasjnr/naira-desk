@@ -183,6 +183,7 @@ export async function createReviewer({
   }
 
   return {
+    history: () => reviews,
     pending,
     review,
     tick() {

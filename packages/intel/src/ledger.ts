@@ -24,6 +24,7 @@ export async function openLedger(path: string) {
     spentSince(at: number) {
       return purchases.filter((p) => p.at >= at).reduce((sum, p) => sum + BigInt(p.amount), 0n);
     },
+    all: () => purchases,
     last: () => purchases.at(-1),
   };
 }
