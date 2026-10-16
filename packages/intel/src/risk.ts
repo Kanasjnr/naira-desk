@@ -1,13 +1,15 @@
-import type { Buyer } from "./buy.ts";
+import { type Buyer, chatRequest, PaidCallError, xSearchRequest } from "./buy.ts";
 
 export type RiskLevel = "low" | "elevated" | "severe";
 // Naira per US dollar, as quoted in the posts.
 export type QuotedRates = { official?: number; parallel?: number };
+// One paid call and whether it delivered what was paid for.
+export type Call = { capability: string; txHash?: string; ok: boolean; posts?: number };
 export type RiskCheck = {
   level: RiskLevel;
   reason: string;
   posts: number;
-  receipts: string[];
+  calls: Call[];
   rates?: QuotedRates;
 };
 
@@ -16,6 +18,8 @@ export const NEWS_QUERY =
 export const RATES_QUERY =
   'naira ("black market" OR parallel OR aboki OR BDC) (rate OR "dollar rate") within_time:1d';
 const MAX_POSTS = 10;
+const SEARCH = xSearchRequest("").capability;
+const RATING = chatRequest([]).capability;
 
 const INSTRUCTIONS = `You watch the news for a market maker that quotes the Nigerian naira (cNGN) against USDT.
 You get two lists of recent posts, NEWS and RATES.
@@ -34,8 +38,11 @@ type Post = {
   user_info?: { followers_count?: number };
 };
 
+const timelineOf = (search: unknown) =>
+  (search as { output?: { timeline?: unknown } })?.output?.timeline;
+
 export function postsFrom(search: unknown): Post[] {
-  const timeline = (search as { output?: { timeline?: unknown } })?.output?.timeline;
+  const timeline = timelineOf(search);
   if (!Array.isArray(timeline)) return [];
   return timeline.filter((post: Post) => post?.type === "tweet" && post.text);
 }
@@ -57,6 +64,9 @@ export function parseRisk(text: string): Pick<RiskCheck, "level" | "reason" | "r
 const line = (post: Post, i: number) =>
   `${i + 1}. ${post.created_at} @${post.screen_name} (${post.user_info?.followers_count ?? 0} followers): ${post.text?.slice(0, 400)}`;
 
+const failedCall = (capability: string, error: unknown): Call[] =>
+  error instanceof PaidCallError ? [{ capability, txHash: error.txHash, ok: false }] : [];
+
 // Buys recent naira news and street-rate posts, then pays Cencori to rate the risk and
 // read off the quoted rates. Anything it can't read counts as elevated, so a failure
 // makes the agent more careful, never less.
@@ -65,17 +75,26 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
     buyer.searchX(NEWS_QUERY),
     buyer.searchX(RATES_QUERY),
   ]);
+  const calls = searches.flatMap((search): Call[] =>
+    search.status === "fulfilled"
+      ? [
+          {
+            capability: SEARCH,
+            txHash: search.value.txHash,
+            ok: Array.isArray(timelineOf(search.value.data)),
+            posts: postsFrom(search.value.data).length,
+          },
+        ]
+      : failedCall(SEARCH, search.reason),
+  );
   const [news, rates] = searches.map((search) =>
     search.status === "fulfilled" ? postsFrom(search.value.data).slice(0, MAX_POSTS) : [],
   ) as [Post[], Post[]];
-  const receipts = searches.flatMap((search) =>
-    search.status === "fulfilled" && search.value.txHash ? [search.value.txHash] : [],
-  );
   const failed = searches.find((search) => search.status === "rejected");
-  if (failed && receipts.length === 0) throw failed.reason;
+  if (failed && searches.every((search) => search.status === "rejected")) throw failed.reason;
 
   const posts = news.length + rates.length;
-  if (posts === 0) return { level: "low", reason: "no recent posts", posts, receipts };
+  if (posts === 0) return { level: "low", reason: "no recent posts", posts, calls };
 
   try {
     const answer = await buyer.chat([
@@ -85,14 +104,19 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
         content: `NEWS\n${news.map(line).join("\n") || "none"}\n\nRATES\n${rates.map(line).join("\n") || "none"}`,
       },
     ]);
-    if (answer.txHash) receipts.push(answer.txHash);
-    const risk = parseRisk(answer.text) ?? {
-      level: "elevated",
-      reason: "couldn't read the rating, staying careful",
+    const risk = parseRisk(answer.text);
+    calls.push({ capability: RATING, txHash: answer.txHash, ok: risk !== undefined });
+    return {
+      ...(risk ?? { level: "elevated", reason: "couldn't read the rating, staying careful" }),
+      posts,
+      calls,
     };
-    return { ...risk, posts, receipts };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { level: "elevated", reason: `rating failed: ${message}`, posts, receipts };
+    calls.push(...failedCall(RATING, error));
+    return { level: "elevated", reason: `rating failed: ${message}`, posts, calls };
   }
 }
+
+export const receiptsOf = (check: Pick<RiskCheck, "calls">) =>
+  (check.calls ?? []).flatMap((call) => (call.txHash ? [call.txHash] : []));

@@ -14,7 +14,12 @@ async function setup(levels: Array<RiskLevel | Error>) {
   const check = vi.fn(async (): Promise<RiskCheck> => {
     const next = levels.shift() ?? "low";
     if (next instanceof Error) throw next;
-    return { level: next, reason: `${next} news`, posts: 4, receipts: ["0xaaaaaaaaaa"] };
+    return {
+      level: next,
+      reason: `${next} news`,
+      posts: 4,
+      calls: [{ capability: "x.posts.search", txHash: "0xaaaaaaaaaa", ok: true }],
+    };
   });
   const open = async () =>
     createRiskDesk({ check, log: await openDecisions(path), now: () => clock });

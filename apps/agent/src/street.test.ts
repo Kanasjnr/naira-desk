@@ -13,7 +13,7 @@ const calm = (rates: RiskCheck["rates"]): RiskCheck => ({
   level: "low",
   reason: "routine",
   posts: 5,
-  receipts: [],
+  calls: [],
   rates,
 });
 

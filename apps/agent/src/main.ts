@@ -2,22 +2,21 @@ import {
   assertCeloMainnet,
   createCeloPublicClient,
   createTaggedWalletClient,
-  DEFAULT_RPC_URL,
   readKeyFile,
   tokenBalance,
 } from "@naira-desk/chain";
 import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
 import { cngnSources, type FairValue } from "@naira-desk/pricing";
-import { dataFile } from "@naira-desk/shared";
 import { http } from "viem";
 import { createRiskDesk, openDecisions } from "./desk.ts";
+import { files, rpcUrl } from "./env.ts";
 import { createFeedServer, FEED_PATH } from "./feed.ts";
 import { createPricer } from "./pricer.ts";
+import { createReviewer, feedbackPoster } from "./reviews.ts";
 import { againstStreet } from "./street.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
-const rpcUrl = env.CELO_RPC_URL || DEFAULT_RPC_URL;
 const host = env.FEED_HOST || "127.0.0.1";
 const port = Number(env.FEED_PORT || 8787);
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -29,18 +28,22 @@ const client = createCeloPublicClient(http(rpcUrl));
 await assertCeloMainnet(client);
 const pricer = createPricer(cngnSources(client));
 
-const { account } = createTaggedWalletClient(
-  await readKeyFile(env.AGENT_KEY_FILE || dataFile("agent.key")),
-  http(rpcUrl),
-);
+const wallet = createTaggedWalletClient(await readKeyFile(files.key), http(rpcUrl));
 const buyer = createBuyer({
-  account,
-  ledger: await openLedger(env.BUY_LEDGER_FILE || dataFile("purchases.jsonl")),
+  account: wallet.account,
+  ledger: await openLedger(files.ledger),
   readBalance: tokenBalance(client),
 });
+const decisions = await openDecisions(files.decisions);
 const desk = createRiskDesk({
   check: async () => againstStreet(await checkNairaRisk(buyer), pricer.current()),
-  log: await openDecisions(env.DECISIONS_FILE || dataFile("decisions.jsonl")),
+  log: decisions,
+});
+const reviewer = await createReviewer({
+  client: wallet.account.address,
+  decisions: decisions.all,
+  give: feedbackPoster(wallet, client),
+  logPath: files.reviews,
 });
 const watch = createPriceWatch();
 
@@ -55,6 +58,7 @@ async function loop() {
   await pricer.refresh();
   const alert = watch(pricer.current(), Date.now());
   void (alert ? desk.alert(alert.trigger, alert.detail) : desk.tick());
+  void reviewer.tick();
   if (!stopped) timer = setTimeout(loop, refreshMs);
 }
 await loop();

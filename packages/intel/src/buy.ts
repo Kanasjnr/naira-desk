@@ -7,19 +7,39 @@ const DAY = 86_400_000;
 // The gateway takes any of these. All are 6-decimal dollars, so spend adds up across them.
 const TOKENS = ["USDC", "USDT", "USAT"] as const;
 
-type Request = { path: string; body: unknown };
+type Request = { capability: string; path: string; body: unknown };
 export type Message = { role: "system" | "user"; content: string };
 
 export const xSearchRequest = (query: string): Request => ({
+  capability: "x.posts.search",
   path: "/v1/social/x/posts/search",
   body: { query, type: "latest" },
 });
 
 // Cencori serves one model in its closed beta, at a flat price whatever the output length.
 export const chatRequest = (messages: Message[]): Request => ({
+  capability: "cencori.v1.chat.completions",
   path: "/cencori/v1/chat/completions",
   body: { model: "maximo-atlas-1.3", max_tokens: 256, temperature: 0, messages },
 });
+
+// The providers' ERC-8004 identities, from their registrations on the gateway.
+export const PROVIDERS: Record<string, { agentId: bigint; endpoint: string }> = {
+  "x.posts.search": { agentId: 9895n, endpoint: `${GATEWAY}/v1/social/x/posts/search` },
+  "cencori.v1.chat.completions": {
+    agentId: 9904n,
+    endpoint: `${GATEWAY}/cencori/v1/chat/completions`,
+  },
+};
+
+// A paid call that went wrong still carries its settlement, so it can be accounted for.
+export class PaidCallError extends Error {
+  txHash: string | undefined;
+  constructor(message: string, txHash: string | undefined) {
+    super(message);
+    this.txHash = txHash;
+  }
+}
 
 export type Buyer = ReturnType<typeof createBuyer>;
 
@@ -83,7 +103,7 @@ export function createBuyer({
         onAccountingError: (error) => console.error("buy: failed to record a purchase", error),
       },
     );
-    if (!response.ok) throw new Error(`buy ${path} failed: ${response.status}`);
+    if (!response.ok) throw new PaidCallError(`buy ${path} failed: ${response.status}`, txHash);
     return { data: await response.json(), txHash };
   }
 

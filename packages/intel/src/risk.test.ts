@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Buyer, Message } from "./buy.ts";
-import { checkNairaRisk, NEWS_QUERY, parseRisk } from "./risk.ts";
+import { PaidCallError } from "./buy.ts";
+import { checkNairaRisk, NEWS_QUERY, parseRisk, receiptsOf } from "./risk.ts";
 
 const post = (text: string) => ({
   type: "tweet",
@@ -43,7 +44,11 @@ describe("checkNairaRisk", () => {
       reason: "devaluation announced",
       rates: { official: 1331, parallel: 1420 },
       posts: 2,
-      receipts: ["0xnews", "0xrates", "0xchat"],
+      calls: [
+        { capability: "x.posts.search", txHash: "0xnews", ok: true, posts: 1 },
+        { capability: "x.posts.search", txHash: "0xrates", ok: true, posts: 1 },
+        { capability: "cencori.v1.chat.completions", txHash: "0xchat", ok: true },
+      ],
     });
     const prompt = asked[0]?.[1]?.content;
     expect(prompt).toContain(
@@ -57,10 +62,9 @@ describe("checkNairaRisk", () => {
   it("doesn't pay for a rating when there's nothing to rate", async () => {
     const { buyer, asked } = fakeBuyer([], [], "unused");
 
-    expect(await checkNairaRisk(buyer)).toMatchObject({
-      level: "low",
-      receipts: ["0xnews", "0xrates"],
-    });
+    const check = await checkNairaRisk(buyer);
+    expect(check.level).toBe("low");
+    expect(receiptsOf(check)).toEqual(["0xnews", "0xrates"]);
     expect(asked).toHaveLength(0);
   });
 
@@ -71,10 +75,9 @@ describe("checkNairaRisk", () => {
       '{"risk":"low","reason":"quiet","official":null,"parallel":1410}',
     );
 
-    expect(await checkNairaRisk(buyer)).toMatchObject({
-      rates: { parallel: 1410 },
-      receipts: ["0xrates", "0xchat"],
-    });
+    const check = await checkNairaRisk(buyer);
+    expect(check.rates).toEqual({ parallel: 1410 });
+    expect(receiptsOf(check)).toEqual(["0xrates", "0xchat"]);
     expect(asked[0]?.[1]?.content).toContain("NEWS\nnone");
   });
 
@@ -87,10 +90,20 @@ describe("checkNairaRisk", () => {
     const garbled = fakeBuyer([post("naira")], [], "I think it's fine");
     expect(await checkNairaRisk(garbled.buyer)).toMatchObject({ level: "elevated" });
 
-    const failed = fakeBuyer([post("naira")], [], new Error("buy /cencori failed: 500"));
-    expect(await checkNairaRisk(failed.buyer)).toMatchObject({
+    const failed = fakeBuyer(
+      [post("naira")],
+      [],
+      new PaidCallError("buy /cencori failed: 500", "0xpaid"),
+    );
+    const check = await checkNairaRisk(failed.buyer);
+    expect(check).toMatchObject({
       level: "elevated",
       reason: "rating failed: buy /cencori failed: 500",
+    });
+    expect(check.calls.at(-1)).toEqual({
+      capability: "cencori.v1.chat.completions",
+      txHash: "0xpaid",
+      ok: false,
     });
   });
 });

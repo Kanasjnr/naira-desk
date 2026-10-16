@@ -1,12 +1,18 @@
+import { receiptsOf } from "@naira-desk/intel";
 import { appendJsonl, readJsonl } from "@naira-desk/shared";
 import { type Decision, decide, type Mode, nextCheckAt, type Trigger } from "./modes.ts";
 import type { Assessment } from "./street.ts";
 
-type Log = { last(): Decision | undefined; record(decision: Decision): Promise<void> };
+type Log = {
+  all(): Decision[];
+  last(): Decision | undefined;
+  record(decision: Decision): Promise<void>;
+};
 
 export async function openDecisions(path: string): Promise<Log> {
   const decisions = await readJsonl<Decision>(path);
   return {
+    all: () => decisions,
     last: () => decisions.at(-1),
     async record(decision) {
       decisions.push(decision);
@@ -43,13 +49,13 @@ export function createRiskDesk({
           level: "elevated",
           reason: `couldn't check: ${error instanceof Error ? error.message : error}`,
           posts: 0,
-          receipts: [],
+          calls: [],
         }),
       );
       const previous = decision?.mode;
       decision = decide(decision, result, trigger, now(), detail);
       await log.record(decision).catch((error) => console.error("failed to log a decision", error));
-      const paid = result.receipts.map(short).join(", ") || "nothing";
+      const paid = receiptsOf(result).map(short).join(", ") || "nothing";
       const naira = (rate?: number) => (rate ? `₦${rate.toFixed(0)}` : "?");
       const { street } = result;
       const rates = street

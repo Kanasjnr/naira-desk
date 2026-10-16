@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decide, nextCheckAt } from "./modes.ts";
 
 const HOUR = 3_600_000;
-const check = (level: RiskLevel): RiskCheck => ({ level, reason: level, posts: 3, receipts: [] });
+const check = (level: RiskLevel): RiskCheck => ({ level, reason: level, posts: 3, calls: [] });
 
 describe("decide", () => {
   it("maps each risk level to a mode", () => {
