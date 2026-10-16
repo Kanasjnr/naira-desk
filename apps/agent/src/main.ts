@@ -13,6 +13,7 @@ import { http } from "viem";
 import { createRiskDesk, openDecisions } from "./desk.ts";
 import { createFeedServer, FEED_PATH } from "./feed.ts";
 import { createPricer } from "./pricer.ts";
+import { againstStreet } from "./street.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
@@ -38,7 +39,7 @@ const buyer = createBuyer({
   readBalance: tokenBalance(client),
 });
 const desk = createRiskDesk({
-  check: () => checkNairaRisk(buyer),
+  check: async () => againstStreet(await checkNairaRisk(buyer), pricer.current()),
   log: await openDecisions(env.DECISIONS_FILE || dataFile("decisions.jsonl")),
 });
 const watch = createPriceWatch();
