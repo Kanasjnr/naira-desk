@@ -3,12 +3,25 @@ import type { Address, LocalAccount } from "viem";
 import type { Ledger } from "./ledger.ts";
 
 export const GATEWAY = "https://gateway.usebuy.ai";
-const X_SEARCH = "/v1/social/x/posts/search";
 const DAY = 86_400_000;
 // The gateway takes any of these. All are 6-decimal dollars, so spend adds up across them.
 const TOKENS = ["USDC", "USDT", "USAT"] as const;
 
-const xSearch = (query: string) => ({ query, type: "latest" });
+type Request = { path: string; body: unknown };
+export type Message = { role: "system" | "user"; content: string };
+
+export const xSearchRequest = (query: string): Request => ({
+  path: "/v1/social/x/posts/search",
+  body: { query, type: "latest" },
+});
+
+// Cencori serves one model in its closed beta, at a flat price whatever the output length.
+export const chatRequest = (messages: Message[]): Request => ({
+  path: "/cencori/v1/chat/completions",
+  body: { model: "maximo-atlas-1.3", max_tokens: 256, temperature: 0, messages },
+});
+
+export type Buyer = ReturnType<typeof createBuyer>;
 
 type BuyerOptions = {
   account: LocalAccount;
@@ -40,7 +53,8 @@ export function createBuyer({
     return TOKENS[0];
   }
 
-  async function buy(path: string, body: unknown) {
+  async function buy({ path, body }: Request) {
+    let txHash: string | undefined;
     const response = await x402.payingFetch(
       {
         account,
@@ -61,27 +75,37 @@ export function createBuyer({
             throw new Error(`daily buy budget reached, ${spent} spent in the last 24h`);
           }
         },
-        onPayment: ({ asset, amount, txHash, outcome }) =>
-          ledger.record({ at: now(), path, asset, amount, txHash, outcome }),
+        onPayment: (paid) => {
+          txHash = paid.txHash;
+          const { asset, amount, outcome } = paid;
+          return ledger.record({ at: now(), path, asset, amount, txHash, outcome });
+        },
         onAccountingError: (error) => console.error("buy: failed to record a purchase", error),
       },
     );
     if (!response.ok) throw new Error(`buy ${path} failed: ${response.status}`);
-    return response.json();
+    return { data: await response.json(), txHash };
   }
 
-  return { searchX: (query: string) => buy(X_SEARCH, xSearch(query)) };
+  return {
+    searchX: (query: string) => buy(xSearchRequest(query)),
+    async chat(messages: Message[]) {
+      const { data, txHash } = await buy(chatRequest(messages));
+      const reply = data as { choices?: { message?: { content?: string } }[] };
+      return { text: reply.choices?.[0]?.message?.content ?? "", txHash };
+    },
+  };
 }
 
 // The 402 challenge is free to fetch and is the authoritative price.
-export async function quoteXSearch(query: string, fetchImpl: typeof fetch = fetch) {
-  const response = await fetchImpl(`${GATEWAY}${X_SEARCH}`, {
+export async function quote({ path, body }: Request, fetchImpl: typeof fetch = fetch) {
+  const response = await fetchImpl(`${GATEWAY}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(xSearch(query)),
+    body: JSON.stringify(body),
   });
   const envelope = response.status === 402 ? x402.parseEnvelope(await response.text()) : undefined;
   const requirement = envelope && x402.selectRequirements(envelope, "celo");
-  if (!requirement) throw new Error(`no price for X search (status ${response.status})`);
+  if (!requirement) throw new Error(`no price for ${path} (status ${response.status})`);
   return BigInt(requirement.maxAmountRequired);
 }

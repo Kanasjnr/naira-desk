@@ -16,6 +16,7 @@
     "agent:register": "node scripts/register-agent.ts",
     "agent:update-card": "node scripts/update-agent-card.ts",
     "buy:search": "node scripts/buy-search.ts",
+    "risk:check": "node scripts/risk-check.ts",
     "vault:deploy": "node scripts/deploy-vault.ts",
     "price": "node scripts/price.ts",
     "agent": "node apps/agent/src/main.ts"
