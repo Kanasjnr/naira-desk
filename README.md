@@ -18,7 +18,7 @@ Early development. The vault is live on Celo mainnet at [`0xD713…AD6C`](https:
 - **Execution:** the agent's wallet owns the vault. Textile's Stitch bot answers RFQs with its own key as the vault's strategy signer, and Textile's Warp service co-signs every fill.
 - **Agent:** prices cNGN from several sources and watches for sharp moves. On a schedule, and whenever the price jumps or sources disagree, it pays through [buy](https://usebuy.ai) for recent naira news, street-rate posts and an AI read of both. It checks the onchain price against the official and parallel rates people are quoting, then quotes normally, carefully, or stops quoting for at least two hours. Every decision is logged with its payment receipts, and once a day the agent rates each service it paid on their ERC-8004 identities, scored on how many paid calls delivered.
 - **Naira API:** the agent sells what it learns. `GET /v1/naira` returns the onchain cNGN rate, the official and parallel rates from the posts it bought, and its current risk call with the payment receipts behind it. It costs $0.005 over x402, payable in USDC, USD₮ or USA₮ with any [buy](https://usebuy.ai) client, and the agent settles each payment onchain itself.
-- **Proof:** a public page with fills, P&L, NAV per share, paid calls and attribution coverage.
+- **Proof:** the agent serves `/proof`, a live page with the onchain, official and street rates over time, every risk check and what it decided, supplier reviews and API sales, each linked to its transaction. The same data is free as JSON at `/v1/tape`.
 
 ## Hackathon requirements
 

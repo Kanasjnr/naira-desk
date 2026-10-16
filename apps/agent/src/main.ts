@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import {
   assertCeloMainnet,
   createCeloPublicClient,
@@ -7,7 +8,7 @@ import {
 } from "@naira-desk/chain";
 import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
 import { cngnSources, type FairValue } from "@naira-desk/pricing";
-import { appendJsonl } from "@naira-desk/shared";
+import { appendJsonl, readJsonl } from "@naira-desk/shared";
 import { formatUnits, http } from "viem";
 import { createApiServer, QUOTE_PATH } from "./api.ts";
 import { createRiskDesk, openDecisions } from "./desk.ts";
@@ -16,8 +17,10 @@ import { createFeedServer, FEED_PATH } from "./feed.ts";
 import { authorizationSettler, createPaywall } from "./paywall.ts";
 import { createPricer } from "./pricer.ts";
 import { nairaQuote } from "./quote.ts";
+import { openRateHistory } from "./rates.ts";
 import { createReviewer, feedbackPoster } from "./reviews.ts";
 import { againstStreet } from "./street.ts";
+import { buildTape, type Sale } from "./tape.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
@@ -40,11 +43,8 @@ await assertCeloMainnet(client);
 const pricer = createPricer(cngnSources(client));
 
 const wallet = createTaggedWalletClient(await readKeyFile(files.key), http(rpcUrl));
-const buyer = createBuyer({
-  account: wallet.account,
-  ledger: await openLedger(files.ledger),
-  readBalance: tokenBalance(client),
-});
+const ledger = await openLedger(files.ledger);
+const buyer = createBuyer({ account: wallet.account, ledger, readBalance: tokenBalance(client) });
 const decisions = await openDecisions(files.decisions);
 const desk = createRiskDesk({
   check: async () => againstStreet(await checkNairaRisk(buyer), pricer.current()),
@@ -57,6 +57,9 @@ const reviewer = await createReviewer({
   logPath: files.reviews,
 });
 const watch = createPriceWatch();
+const rates = await openRateHistory(files.rates);
+const sales = await readJsonl<Sale>(files.sales);
+const page = await readFile(new URL("./proof.html", import.meta.url), "utf8");
 
 const restored = desk.current();
 if (restored) console.log(`restored ${restored.mode} from ${new Date(restored.at).toISOString()}`);
@@ -67,7 +70,11 @@ let timer: NodeJS.Timeout | undefined;
 let stopped = false;
 async function loop() {
   await pricer.refresh();
-  const alert = watch(pricer.current(), Date.now());
+  const value = pricer.current();
+  const alert = watch(value, Date.now());
+  void rates
+    .observe(value, Date.now())
+    .catch((error) => console.error("failed to log a rate", error));
   void (alert ? desk.alert(alert.trigger, alert.detail) : desk.tick());
   void reviewer.tick();
   if (!stopped) timer = setTimeout(loop, refreshMs);
@@ -92,17 +99,28 @@ const paywall = createPaywall({
 });
 const api = createApiServer({
   quote: () => nairaQuote(pricer.current(), desk.current()),
+  tape: () =>
+    buildTape({
+      decisions: decisions.all(),
+      purchases: ledger.all(),
+      reviews: reviewer.history(),
+      sales,
+      rates: rates.samples(),
+      wallet: wallet.account.address,
+      now: Date.now(),
+    }),
+  page,
   paywall,
   onSale: (sale) => {
     console.log(
       `sold a quote to ${sale.payer} for $${formatUnits(BigInt(sale.amount), 6)} [${sale.txHash}]`,
     );
-    appendJsonl(files.sales, { at: Date.now(), ...sale }).catch((error) =>
-      console.error("failed to log a sale", error),
-    );
+    const entry = { at: Date.now(), ...sale };
+    sales.push(entry);
+    appendJsonl(files.sales, entry).catch((error) => console.error("failed to log a sale", error));
   },
 }).listen(apiPort, apiHost, () => {
-  console.log(`naira api on ${apiUrl}${QUOTE_PATH}`);
+  console.log(`naira api on ${apiUrl}${QUOTE_PATH}, proof page on ${apiUrl}/proof`);
 });
 
 process.on("SIGTERM", () => {
