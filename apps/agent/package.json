@@ -8,6 +8,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@celo/buy-core": "catalog:",
     "@naira-desk/chain": "workspace:*",
     "@naira-desk/intel": "workspace:*",
     "@naira-desk/pricing": "workspace:*",

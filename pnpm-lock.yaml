@@ -66,6 +66,9 @@ importers:
 
   apps/agent:
     dependencies:
+      '@celo/buy-core':
+        specifier: 'catalog:'
+        version: 0.8.2(typescript@6.0.3)
       '@naira-desk/chain':
         specifier: workspace:*
         version: link:../../packages/chain

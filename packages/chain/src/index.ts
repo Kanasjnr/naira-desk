@@ -1,3 +1,4 @@
+export { eip3009Abi } from "./eip3009.ts";
 export { AGENT_ID, IDENTITY_REGISTRY, identityRegistryAbi, toDataUri } from "./identity.ts";
 export { createKeyFile, readKeyFile } from "./keys.ts";
 export {

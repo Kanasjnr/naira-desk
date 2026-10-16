@@ -9,4 +9,5 @@ export const files = {
   ledger: env.BUY_LEDGER_FILE || dataFile("purchases.jsonl"),
   decisions: env.DECISIONS_FILE || dataFile("decisions.jsonl"),
   reviews: env.REVIEWS_FILE || dataFile("reviews.jsonl"),
+  sales: env.SALES_FILE || dataFile("sales.jsonl"),
 };
