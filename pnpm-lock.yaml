@@ -69,9 +69,15 @@ importers:
       '@naira-desk/chain':
         specifier: workspace:*
         version: link:../../packages/chain
+      '@naira-desk/intel':
+        specifier: workspace:*
+        version: link:../../packages/intel
       '@naira-desk/pricing':
         specifier: workspace:*
         version: link:../../packages/pricing
+      '@naira-desk/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       viem:
         specifier: 'catalog:'
         version: 2.56.9(typescript@6.0.3)
@@ -113,6 +119,9 @@ importers:
       '@celo/buy-core':
         specifier: 'catalog:'
         version: 0.8.2(typescript@6.0.3)
+      '@naira-desk/shared':
+        specifier: workspace:*
+        version: link:../shared
       viem:
         specifier: 'catalog:'
         version: 2.56.9(typescript@6.0.3)
@@ -120,9 +129,6 @@ importers:
       '@naira-desk/chain':
         specifier: workspace:*
         version: link:../chain
-      '@naira-desk/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2

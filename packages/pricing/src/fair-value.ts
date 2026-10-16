@@ -2,7 +2,7 @@ import type { PricePoint } from "./types.ts";
 
 export type FairValue =
   | { ok: true; price: number; at: number; sources: string[] }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; disagree?: true };
 
 type Limits = { maxAgeMs: number; maxDeviationBps: number };
 
@@ -37,7 +37,11 @@ export function fairValue(points: PricePoint[], now: number, limits = defaults):
     (p) => (Math.abs(p.price - center) / center) * 10_000 <= limits.maxDeviationBps,
   );
   if (agreeing.length < 2) {
-    return { ok: false, reason: `sources disagree by more than ${limits.maxDeviationBps} bps` };
+    return {
+      ok: false,
+      reason: `sources disagree by more than ${limits.maxDeviationBps} bps`,
+      disagree: true,
+    };
   }
 
   return {

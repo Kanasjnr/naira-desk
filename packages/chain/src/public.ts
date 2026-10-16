@@ -1,5 +1,11 @@
 import { CELO_CHAIN_ID } from "@naira-desk/shared";
-import { createPublicClient, type Transport } from "viem";
+import {
+  type Address,
+  createPublicClient,
+  erc20Abi,
+  type PublicClient,
+  type Transport,
+} from "viem";
 import { celo } from "viem/chains";
 
 export const DEFAULT_RPC_URL = "https://forno.celo.org";
@@ -14,3 +20,12 @@ export async function assertCeloMainnet(client: { getChainId(): Promise<number> 
     throw new Error(`expected Celo mainnet (${CELO_CHAIN_ID}), RPC is on chain ${chainId}`);
   }
 }
+
+export const tokenBalance =
+  (client: Pick<PublicClient, "readContract">) => (token: Address, owner: Address) =>
+    client.readContract({
+      address: token,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [owner],
+    });
