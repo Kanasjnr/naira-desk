@@ -1,5 +1,4 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { appendJsonl, readJsonl } from "@naira-desk/shared";
 
 export type Purchase = {
   at: number;
@@ -14,23 +13,12 @@ export type Ledger = Awaited<ReturnType<typeof openLedger>>;
 
 // One JSON line per paid call, so spend survives restarts and the receipts can be published.
 export async function openLedger(path: string) {
-  const purchases: Purchase[] = await readFile(path, "utf8").then(
-    (text) =>
-      text
-        .split("\n")
-        .filter(Boolean)
-        .map((line) => JSON.parse(line)),
-    (error) => {
-      if (error.code === "ENOENT") return [];
-      throw error;
-    },
-  );
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  const purchases = await readJsonl<Purchase>(path);
 
   return {
     async record(purchase: Purchase) {
       purchases.push(purchase);
-      await appendFile(path, `${JSON.stringify(purchase)}\n`, { mode: 0o600 });
+      await appendJsonl(path, purchase);
     },
     // Rejected and ambiguous calls may still have settled, so they count too.
     spentSince(at: number) {

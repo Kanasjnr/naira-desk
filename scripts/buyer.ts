@@ -3,9 +3,10 @@ import {
   createCeloPublicClient,
   createTaggedWalletClient,
   readKeyFile,
+  tokenBalance,
 } from "@naira-desk/chain";
 import { createBuyer, openLedger } from "@naira-desk/intel";
-import { erc20Abi, formatUnits, http } from "viem";
+import { formatUnits, http } from "viem";
 import { keyFile, ledgerFile, rpcUrl } from "./env.ts";
 
 export const usd = (atomic: bigint) => `$${formatUnits(atomic, 6)}`;
@@ -15,17 +16,7 @@ export async function agentBuyer() {
   await assertCeloMainnet(client);
   const { account } = createTaggedWalletClient(await readKeyFile(keyFile), http(rpcUrl));
   const ledger = await openLedger(ledgerFile);
-  const buyer = createBuyer({
-    account,
-    ledger,
-    readBalance: (token, owner) =>
-      client.readContract({
-        address: token,
-        abi: erc20Abi,
-        functionName: "balanceOf",
-        args: [owner],
-      }),
-  });
+  const buyer = createBuyer({ account, ledger, readBalance: tokenBalance(client) });
   const spentToday = () => usd(ledger.spentSince(Date.now() - 86_400_000));
   return { buyer, spentToday };
 }

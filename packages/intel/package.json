@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "@celo/buy-core": "catalog:",
+    "@naira-desk/shared": "workspace:*",
     "viem": "catalog:"
   },
   "devDependencies": {
     "@naira-desk/chain": "workspace:*",
-    "@naira-desk/shared": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
