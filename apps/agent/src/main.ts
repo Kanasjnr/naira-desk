@@ -7,21 +7,32 @@ import {
 } from "@naira-desk/chain";
 import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
 import { cngnSources, type FairValue } from "@naira-desk/pricing";
-import { http } from "viem";
+import { appendJsonl } from "@naira-desk/shared";
+import { formatUnits, http } from "viem";
+import { createApiServer, QUOTE_PATH } from "./api.ts";
 import { createRiskDesk, openDecisions } from "./desk.ts";
 import { files, rpcUrl } from "./env.ts";
 import { createFeedServer, FEED_PATH } from "./feed.ts";
+import { authorizationSettler, createPaywall } from "./paywall.ts";
 import { createPricer } from "./pricer.ts";
+import { nairaQuote } from "./quote.ts";
 import { createReviewer, feedbackPoster } from "./reviews.ts";
 import { againstStreet } from "./street.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
-const host = env.FEED_HOST || "127.0.0.1";
-const port = Number(env.FEED_PORT || 8787);
-if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-  throw new Error(`invalid FEED_PORT: ${env.FEED_PORT}`);
+function portFrom(name: string, fallback: number) {
+  const port = Number(env[name] || fallback);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`invalid ${name}: ${env[name]}`);
+  }
+  return port;
 }
+const host = env.FEED_HOST || "127.0.0.1";
+const port = portFrom("FEED_PORT", 8787);
+const apiHost = env.API_HOST || "127.0.0.1";
+const apiPort = portFrom("API_PORT", 8788);
+const apiUrl = env.API_URL || `http://${apiHost}:${apiPort}`;
 const refreshMs = 5_000;
 
 const client = createCeloPublicClient(http(rpcUrl));
@@ -70,8 +81,33 @@ const server = createFeedServer(current).listen(port, host, () => {
   console.log(`feed on http://${host}:${port}${FEED_PATH}`);
 });
 
+const paywall = createPaywall({
+  // Settling costs the agent about $0.0015 in gas, so this keeps a margin.
+  price: 5_000n,
+  payTo: wallet.account.address,
+  resource: `${apiUrl}${QUOTE_PATH}`,
+  description: "Naira Desk: onchain, official and street naira rates with the agent's risk call",
+  chain: client,
+  settle: authorizationSettler(wallet, client),
+});
+const api = createApiServer({
+  quote: () => nairaQuote(pricer.current(), desk.current()),
+  paywall,
+  onSale: (sale) => {
+    console.log(
+      `sold a quote to ${sale.payer} for $${formatUnits(BigInt(sale.amount), 6)} [${sale.txHash}]`,
+    );
+    appendJsonl(files.sales, { at: Date.now(), ...sale }).catch((error) =>
+      console.error("failed to log a sale", error),
+    );
+  },
+}).listen(apiPort, apiHost, () => {
+  console.log(`naira api on ${apiUrl}${QUOTE_PATH}`);
+});
+
 process.on("SIGTERM", () => {
   stopped = true;
   clearTimeout(timer);
   server.close();
+  api.close();
 });
