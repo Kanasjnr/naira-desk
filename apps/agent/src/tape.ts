@@ -30,22 +30,13 @@ const sum = (items: { amount: string }[]) =>
 
 // Everything the proof page shows, from the agent's own logs. Every paid call, review
 // and sale carries its transaction so a reader can check it on Celoscan.
-export function buildTape({
-  decisions,
-  purchases,
-  reviews,
-  sales,
-  rates,
-  wallet,
-  now,
-}: Sources) {
+export function buildTape({ decisions, purchases, reviews, sales, rates, wallet, now }: Sources) {
   const last = decisions.at(-1);
   const byCapability = new Map<string, { calls: number; usd: number }>();
   for (const purchase of purchases) {
     const capability =
-      Object.entries(PROVIDERS).find(([, p]) =>
-        p.endpoint.endsWith(purchase.path),
-      )?.[0] ?? purchase.path;
+      Object.entries(PROVIDERS).find(([, p]) => p.endpoint.endsWith(purchase.path))?.[0] ??
+      purchase.path;
     const entry = byCapability.get(capability) ?? { calls: 0, usd: 0 };
     entry.calls += 1;
     entry.usd += usd(BigInt(purchase.amount));
