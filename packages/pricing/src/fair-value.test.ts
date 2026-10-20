@@ -33,7 +33,11 @@ describe("fairValue", () => {
 
   it("refuses when two sources disagree", () => {
     const result = fairValue([point("a", 0.000733), point("b", 0.00074)], now);
-    expect(result).toEqual({ ok: false, reason: "sources disagree by more than 25 bps" });
+    expect(result).toEqual({
+      ok: false,
+      reason: "sources disagree by more than 25 bps",
+      disagree: true,
+    });
   });
 
   it("counts sources, not readings", () => {

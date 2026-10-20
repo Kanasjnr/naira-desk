@@ -1,36 +1,131 @@
-import { assertCeloMainnet, createCeloPublicClient, DEFAULT_RPC_URL } from "@naira-desk/chain";
-import { cngnSources } from "@naira-desk/pricing";
-import { http } from "viem";
+import { readFile } from "node:fs/promises";
+import {
+  assertCeloMainnet,
+  createCeloPublicClient,
+  createTaggedWalletClient,
+  readKeyFile,
+  tokenBalance,
+} from "@naira-desk/chain";
+import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
+import { cngnSources, type FairValue } from "@naira-desk/pricing";
+import { appendJsonl, readJsonl } from "@naira-desk/shared";
+import { formatUnits, http } from "viem";
+import { createApiServer, QUOTE_PATH } from "./api.ts";
+import { createRiskDesk, openDecisions } from "./desk.ts";
+import { files, rpcUrl } from "./env.ts";
 import { createFeedServer, FEED_PATH } from "./feed.ts";
+import { authorizationSettler, createPaywall } from "./paywall.ts";
 import { createPricer } from "./pricer.ts";
+import { nairaQuote } from "./quote.ts";
+import { openRateHistory } from "./rates.ts";
+import { createReviewer, feedbackPoster } from "./reviews.ts";
+import { againstStreet } from "./street.ts";
+import { buildTape, type Sale } from "./tape.ts";
+import { createPriceWatch } from "./watch.ts";
 
-const rpcUrl = process.env.CELO_RPC_URL || DEFAULT_RPC_URL;
-const host = process.env.FEED_HOST || "127.0.0.1";
-const port = Number(process.env.FEED_PORT || 8787);
-if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-  throw new Error(`invalid FEED_PORT: ${process.env.FEED_PORT}`);
+const env = process.env;
+function portFrom(name: string, fallback: number) {
+  const port = Number(env[name] || fallback);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`invalid ${name}: ${env[name]}`);
+  }
+  return port;
 }
+const host = env.FEED_HOST || "127.0.0.1";
+const port = portFrom("FEED_PORT", 8787);
+const apiHost = env.API_HOST || "127.0.0.1";
+const apiPort = portFrom("API_PORT", 8788);
+const apiUrl = env.API_URL || `http://${apiHost}:${apiPort}`;
 const refreshMs = 5_000;
 
 const client = createCeloPublicClient(http(rpcUrl));
 await assertCeloMainnet(client);
 const pricer = createPricer(cngnSources(client));
 
+const wallet = createTaggedWalletClient(await readKeyFile(files.key), http(rpcUrl));
+const ledger = await openLedger(files.ledger);
+const buyer = createBuyer({ account: wallet.account, ledger, readBalance: tokenBalance(client) });
+const decisions = await openDecisions(files.decisions);
+const desk = createRiskDesk({
+  check: async () => againstStreet(await checkNairaRisk(buyer), pricer.current()),
+  log: decisions,
+});
+const reviewer = await createReviewer({
+  client: wallet.account.address,
+  decisions: decisions.all,
+  give: feedbackPoster(wallet, client),
+  logPath: files.reviews,
+});
+const watch = createPriceWatch();
+const rates = await openRateHistory(files.rates);
+const sales = await readJsonl<Sale>(files.sales);
+const page = await readFile(new URL("./proof.html", import.meta.url), "utf8");
+
+const restored = desk.current();
+if (restored) console.log(`restored ${restored.mode} from ${new Date(restored.at).toISOString()}`);
+
 // Wait for each refresh to finish before scheduling the next, so slow sources can't pile up.
+// Risk checks run alongside and never hold up the feed.
 let timer: NodeJS.Timeout | undefined;
 let stopped = false;
 async function loop() {
   await pricer.refresh();
+  const value = pricer.current();
+  const alert = watch(value, Date.now());
+  void rates
+    .observe(value, Date.now())
+    .catch((error) => console.error("failed to log a rate", error));
+  void (alert ? desk.alert(alert.trigger, alert.detail) : desk.tick());
+  void reviewer.tick();
   if (!stopped) timer = setTimeout(loop, refreshMs);
 }
 await loop();
 
-const server = createFeedServer(pricer.current).listen(port, host, () => {
+const current = (): FairValue =>
+  desk.mode() === "halted" ? { ok: false, reason: `halted: ${desk.reason()}` } : pricer.current();
+
+const server = createFeedServer(current).listen(port, host, () => {
   console.log(`feed on http://${host}:${port}${FEED_PATH}`);
+});
+
+const paywall = createPaywall({
+  // Settling costs the agent about $0.0015 in gas, so this keeps a margin.
+  price: 5_000n,
+  payTo: wallet.account.address,
+  resource: `${apiUrl}${QUOTE_PATH}`,
+  description: "Naira Desk: onchain, official and street naira rates with the agent's risk call",
+  chain: client,
+  settle: authorizationSettler(wallet, client),
+});
+const api = createApiServer({
+  quote: () => nairaQuote(pricer.current(), desk.current()),
+  tape: () =>
+    buildTape({
+      decisions: decisions.all(),
+      purchases: ledger.all(),
+      reviews: reviewer.history(),
+      sales,
+      rates: rates.samples(),
+      wallet: wallet.account.address,
+      now: Date.now(),
+    }),
+  page,
+  paywall,
+  onSale: (sale) => {
+    console.log(
+      `sold a quote to ${sale.payer} for $${formatUnits(BigInt(sale.amount), 6)} [${sale.txHash}]`,
+    );
+    const entry = { at: Date.now(), ...sale };
+    sales.push(entry);
+    appendJsonl(files.sales, entry).catch((error) => console.error("failed to log a sale", error));
+  },
+}).listen(apiPort, apiHost, () => {
+  console.log(`naira api on ${apiUrl}${QUOTE_PATH}, proof page on ${apiUrl}/proof`);
 });
 
 process.on("SIGTERM", () => {
   stopped = true;
   clearTimeout(timer);
   server.close();
+  api.close();
 });
