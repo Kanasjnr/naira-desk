@@ -28,7 +28,7 @@ const usd = (atomic: bigint) => Number(atomic) / 1e6;
 const sum = (items: { amount: string }[]) =>
   items.reduce((total, i) => total + BigInt(i.amount), 0n);
 
-// Everything the proof page shows, from the agent's own logs. Every paid call, review
+// Everything the dashboard shows, from the agent's own logs. Every paid call, review
 // and sale carries its transaction so a reader can check it on Celoscan.
 export function buildTape({ decisions, purchases, reviews, sales, rates, wallet, now }: Sources) {
   const last = decisions.at(-1);
