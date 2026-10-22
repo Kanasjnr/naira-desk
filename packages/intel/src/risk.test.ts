@@ -88,7 +88,10 @@ describe("checkNairaRisk", () => {
 
   it("treats an unreadable or failed rating as elevated", async () => {
     const garbled = fakeBuyer([post("naira")], [], "I think it's fine");
-    expect(await checkNairaRisk(garbled.buyer)).toMatchObject({ level: "elevated" });
+    expect(await checkNairaRisk(garbled.buyer)).toMatchObject({
+      level: "elevated",
+      unreadable: "I think it's fine",
+    });
 
     const failed = fakeBuyer(
       [post("naira")],
@@ -118,8 +121,14 @@ describe("parseRisk", () => {
     expect(parseRisk('{"risk": "panic", "reason": "x"}')).toBeUndefined();
   });
 
-  it("keeps only positive numeric rates", () => {
-    const parsed = parseRisk('{"risk":"low","reason":"r","official":"1331","parallel":1405.5}');
-    expect(parsed?.rates).toEqual({ official: undefined, parallel: 1405.5 });
+  it("reads naira amounts written with separators or as strings", () => {
+    expect(
+      parseRisk('{"risk":"low","reason":"r","official":1,331.61,"parallel":"₦1,375"}')?.rates,
+    ).toEqual({ official: 1331.61, parallel: 1375 });
+  });
+
+  it("drops rates that aren't positive amounts", () => {
+    const parsed = parseRisk('{"risk":"low","reason":"r","official":"n/a","parallel":-5}');
+    expect(parsed?.rates).toEqual({ official: undefined, parallel: undefined });
   });
 });
