@@ -1,4 +1,4 @@
-import { CNGN, USDT } from "@naira-desk/shared";
+import { CNGN, USDT } from "@naira-desk/shared/constants";
 import { type Address, parseAbi, parseEther, parseUnits } from "viem";
 
 export const VAULT_FACTORY = "0x88104decA449C797632AfdcA77A3140b24cD844A";

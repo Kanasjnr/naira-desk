@@ -5,7 +5,7 @@ export type RateSample = { at: number; ngnPerUsdt: number };
 
 const KEEP = 30 * 86_400_000;
 
-// Samples the onchain naira rate every ten minutes, so the proof page can chart it
+// Samples the onchain naira rate every ten minutes, so the dashboard can chart it
 // against the official and street rates the agent reads.
 export async function openRateHistory(path: string, everyMs = 600_000) {
   const samples = await readJsonl<RateSample>(path);

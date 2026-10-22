@@ -6,7 +6,7 @@ import type { FairValue } from "@naira-desk/pricing";
 import { custom, type Hash, type PublicClient } from "viem";
 import { generatePrivateKey } from "viem/accounts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApiServer, PROOF_PATH, QUOTE_PATH, TAPE_PATH } from "./api.ts";
+import { createApiServer, QUOTE_PATH, TAPE_PATH } from "./api.ts";
 import type { Decision } from "./modes.ts";
 import { createPaywall } from "./paywall.ts";
 import { nairaQuote } from "./quote.ts";
@@ -57,7 +57,6 @@ async function serve(value: FairValue) {
   const server = createApiServer({
     quote: () => nairaQuote(value, decision),
     tape: () => ({ decisions: [decision] }),
-    page: "<!doctype html><title>Naira Desk · proof</title>",
     paywall: createPaywall({
       price: 2_000n,
       payTo: seller.address,
@@ -122,14 +121,11 @@ describe("createApiServer", () => {
     expect(settle).not.toHaveBeenCalled();
   });
 
-  it("serves the tape and the proof page for free", async () => {
+  it("serves the tape for free", async () => {
     const { url } = await serve(fair);
     expect(await (await fetch(`${url}${TAPE_PATH}`)).json()).toMatchObject({
       decisions: [{ mode: "normal" }],
     });
-    const page = await fetch(`${url}${PROOF_PATH}`);
-    expect(page.headers.get("content-type")).toContain("text/html");
-    expect(await page.text()).toContain("Naira Desk · proof");
   });
 
   it("describes itself at the root", async () => {
@@ -139,7 +135,6 @@ describe("createApiServer", () => {
       endpoints: [
         { path: QUOTE_PATH, price: "2000" },
         { path: TAPE_PATH, price: "0" },
-        { path: PROOF_PATH, price: "0" },
       ],
     });
   });

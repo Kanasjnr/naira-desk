@@ -22,7 +22,8 @@
     "vault:set-signer": "node scripts/vault-signer.ts",
     "price": "node scripts/price.ts",
     "agent": "node apps/agent/src/main.ts",
-    "agent:review": "node apps/agent/src/review-now.ts"
+    "agent:review": "node apps/agent/src/review-now.ts",
+    "web": "pnpm --filter @naira-desk/web dev"
   },
   "dependencies": {
     "@naira-desk/chain": "workspace:*",

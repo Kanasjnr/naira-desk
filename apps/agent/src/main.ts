@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import {
   assertCeloMainnet,
   createCeloPublicClient,
@@ -59,7 +58,6 @@ const reviewer = await createReviewer({
 const watch = createPriceWatch();
 const rates = await openRateHistory(files.rates);
 const sales = await readJsonl<Sale>(files.sales);
-const page = await readFile(new URL("./proof.html", import.meta.url), "utf8");
 
 const restored = desk.current();
 if (restored) console.log(`restored ${restored.mode} from ${new Date(restored.at).toISOString()}`);
@@ -109,7 +107,6 @@ const api = createApiServer({
       wallet: wallet.account.address,
       now: Date.now(),
     }),
-  page,
   paywall,
   onSale: (sale) => {
     console.log(
@@ -120,7 +117,7 @@ const api = createApiServer({
     appendJsonl(files.sales, entry).catch((error) => console.error("failed to log a sale", error));
   },
 }).listen(apiPort, apiHost, () => {
-  console.log(`naira api on ${apiUrl}${QUOTE_PATH}, proof page on ${apiUrl}/proof`);
+  console.log(`naira api on ${apiUrl}${QUOTE_PATH}`);
 });
 
 process.on("SIGTERM", () => {
