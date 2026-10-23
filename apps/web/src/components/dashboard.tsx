@@ -3,58 +3,74 @@
 import { useEffect, useState } from "react";
 import { clock } from "@/lib/format";
 import type { Tape } from "@/lib/tape";
+import type { Vault } from "@/lib/vault";
 import { Reviews, Sales } from "./activity";
 import { DecisionTape } from "./decision-tape";
 import { Figures } from "./figures";
 import { RatesChart } from "./rates-chart";
 import { StatusCard } from "./status-card";
+import { VaultSection } from "./vault";
 
 const REFRESH_MS = 30_000;
 
-// Keeps the last good tape on screen while it refreshes, and says so if the agent goes quiet.
-export function Dashboard({ initial }: { initial: Tape | null }) {
-  const [tape, setTape] = useState(initial);
+// Keeps the last good response on screen while it refreshes, and says so if its source goes quiet.
+function usePolled<T>(path: string, initial: T | null) {
+  const [data, setData] = useState(initial);
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(async () => {
       try {
-        const response = await fetch("/api/tape", { cache: "no-store" });
+        const response = await fetch(path, { cache: "no-store" });
         if (!response.ok) throw new Error(String(response.status));
-        setTape((await response.json()) as Tape);
+        setData((await response.json()) as T);
         setStale(false);
       } catch {
         setStale(true);
       }
     }, REFRESH_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [path]);
 
-  if (!tape) {
-    return (
-      <p className="py-24 text-center text-muted-foreground">
-        The agent isn't reachable right now. This page fills in once it is.
-      </p>
-    );
-  }
+  return { data, stale };
+}
+
+export function Dashboard({ initial }: { initial: { tape: Tape | null; vault: Vault | null } }) {
+  const { data: tape, stale } = usePolled("/api/tape", initial.tape);
+  const vault = usePolled("/api/vault", initial.vault);
 
   return (
-    <div className={`space-y-4 transition-opacity ${stale ? "opacity-60" : ""}`}>
-      <StatusCard tape={tape} />
-      <Figures tape={tape} />
-      <RatesChart tape={tape} />
-      <DecisionTape tape={tape} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Reviews tape={tape} />
-        <Sales tape={tape} />
+    <div className="space-y-4">
+      {tape ? (
+        <div className={`space-y-4 transition-opacity ${stale ? "opacity-60" : ""}`}>
+          <StatusCard tape={tape} />
+          <Figures tape={tape} />
+        </div>
+      ) : (
+        <p className="py-12 text-center text-muted-foreground">
+          The agent isn't reachable right now. Its rates and decisions fill in once it is.
+        </p>
+      )}
+      <div className={`transition-opacity ${vault.stale ? "opacity-60" : ""}`}>
+        <VaultSection vault={vault.data} />
       </div>
-      <p className="text-xs text-muted-foreground">
-        {stale ? "Can't reach the agent, showing the last update" : "Updated"} at{" "}
-        {clock(tape.generatedAt)} WAT · raw data at{" "}
-        <a href="/api/tape" className="underline">
-          /api/tape
-        </a>
-      </p>
+      {tape && (
+        <div className={`space-y-4 transition-opacity ${stale ? "opacity-60" : ""}`}>
+          <RatesChart tape={tape} />
+          <DecisionTape tape={tape} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Reviews tape={tape} />
+            <Sales tape={tape} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {stale ? "Can't reach the agent, showing the last update" : "Updated"} at{" "}
+            {clock(tape.generatedAt)} WAT · raw data at{" "}
+            <a href="/api/tape" className="underline">
+              /api/tape
+            </a>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
