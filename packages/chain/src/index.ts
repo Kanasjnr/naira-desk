@@ -7,6 +7,15 @@ export {
   DEFAULT_RPC_URL,
   tokenBalance,
 } from "./public.ts";
+export { REACTOR, reactorAbi } from "./reactor.ts";
 export { REPUTATION_REGISTRY, reputationRegistryAbi } from "./reputation.ts";
-export { operatorVaultAbi, VAULT, VAULT_FACTORY, vaultFactoryAbi, vaultInit } from "./vault.ts";
+export {
+  operatorVaultAbi,
+  VAULT,
+  VAULT_DEPLOY_BLOCK,
+  VAULT_FACTORY,
+  vaultEventsAbi,
+  vaultFactoryAbi,
+  vaultInit,
+} from "./vault.ts";
 export { createTaggedWalletClient, hasOurTag, isTxTagged, isUntaggedError } from "./wallet.ts";
