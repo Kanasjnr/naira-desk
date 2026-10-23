@@ -16,11 +16,12 @@ export const xSearchRequest = (query: string): Request => ({
   body: { query, type: "latest" },
 });
 
-// Cencori serves one model in its closed beta, at a flat price whatever the output length.
+// Cencori serves one model in its closed beta, at a flat price whatever the output length,
+// so the larger output limit costs nothing extra.
 export const chatRequest = (messages: Message[]): Request => ({
   capability: "cencori.v1.chat.completions",
   path: "/cencori/v1/chat/completions",
-  body: { model: "maximo-atlas-1.3", max_tokens: 256, temperature: 0, messages },
+  body: { model: "maximo-atlas-1.3", max_tokens: 1024, temperature: 0, messages },
 });
 
 // The providers' ERC-8004 identities, from their registrations on the gateway.

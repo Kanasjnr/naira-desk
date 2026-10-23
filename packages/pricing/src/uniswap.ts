@@ -8,7 +8,14 @@ const poolAbi = parseAbi([
   "function observe(uint32[] secondsAgos) view returns (int56[] tickCumulatives, uint160[] secondsPerLiquidityCumulativeX128s)",
 ]);
 
-type Client = Pick<ReturnType<typeof createCeloPublicClient>, "getBlock" | "readContract">;
+type Client = Pick<
+  ReturnType<typeof createCeloPublicClient>,
+  "getBlockNumber" | "getBlock" | "readContract"
+>;
+
+// Forno balances across nodes that can trail the newest block by a moment, so read
+// slightly behind the head where every node can answer.
+const BEHIND_HEAD = 2n;
 
 // Time-weighted price from the Uniswap v3 cNGN/USDT pool. USDT is token0 and
 // cNGN token1, both with 6 decimals, so 1.0001^-tick is USDT per cNGN.
@@ -17,7 +24,8 @@ export async function uniswapTwap(client: Client, seconds = 120): Promise<PriceP
   if (!Number.isInteger(seconds) || seconds <= 0) {
     throw new Error(`invalid TWAP window: ${seconds}`);
   }
-  const block = await client.getBlock();
+  const head = await client.getBlockNumber();
+  const block = await client.getBlock({ blockNumber: head - BEHIND_HEAD });
   const [ticks] = await client.readContract({
     address: CNGN_USDT_POOL,
     abi: poolAbi,

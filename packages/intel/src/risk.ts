@@ -1,3 +1,4 @@
+import { briefError } from "@naira-desk/shared";
 import { type Buyer, chatRequest, PaidCallError, xSearchRequest } from "./buy.ts";
 
 export type RiskLevel = "low" | "elevated" | "severe";
@@ -11,6 +12,8 @@ export type RiskCheck = {
   posts: number;
   calls: Call[];
   rates?: QuotedRates;
+  // The start of a rating the agent couldn't read, kept for debugging.
+  unreadable?: string;
 };
 
 export const NEWS_QUERY =
@@ -47,13 +50,26 @@ export function postsFrom(search: unknown): Post[] {
   return timeline.filter((post: Post) => post?.type === "tweet" && post.text);
 }
 
-const rate = (value: unknown) =>
-  typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+// Rates may come back as numbers or as strings like "₦1,331.61".
+function rate(value: unknown) {
+  const n = typeof value === "string" ? Number(value.replace(/[₦,\s]/g, "")) : value;
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function parseJson(text: string) {
+  const json = text.match(/\{[\s\S]*\}/)?.[0] ?? "";
+  try {
+    return JSON.parse(json);
+  } catch {
+    // Naira amounts often keep their thousands separators: "official": 1,331.61
+    return JSON.parse(json.replace(/(\d),(?=\d{3}\b)/g, "$1"));
+  }
+}
 
 // The model is asked for bare JSON but may wrap it in prose or a code fence.
 export function parseRisk(text: string): Pick<RiskCheck, "level" | "reason" | "rates"> | undefined {
   try {
-    const { risk, reason, official, parallel } = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? "");
+    const { risk, reason, official, parallel } = parseJson(text);
     if (["low", "elevated", "severe"].includes(risk) && typeof reason === "string") {
       return { level: risk, reason, rates: { official: rate(official), parallel: rate(parallel) } };
     }
@@ -106,15 +122,17 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
     ]);
     const risk = parseRisk(answer.text);
     calls.push({ capability: RATING, txHash: answer.txHash, ok: risk !== undefined });
+    if (risk) return { ...risk, posts, calls };
     return {
-      ...(risk ?? { level: "elevated", reason: "couldn't read the rating, staying careful" }),
+      level: "elevated",
+      reason: "couldn't read the rating, staying careful",
       posts,
       calls,
+      unreadable: answer.text.slice(0, 300),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     calls.push(...failedCall(RATING, error));
-    return { level: "elevated", reason: `rating failed: ${message}`, posts, calls };
+    return { level: "elevated", reason: `rating failed: ${briefError(error)}`, posts, calls };
   }
 }
 
