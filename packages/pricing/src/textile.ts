@@ -2,7 +2,8 @@ import { CELO_CHAIN_ID, CNGN, USDT } from "@naira-desk/shared";
 import type { PricePoint } from "./types.ts";
 
 const PREVIEW_URL = "https://api.textilecredit.com/v2/rfq/preview";
-const HUNDRED_USDT = "100000000";
+// Makers sometimes hold only a few dollars of one side, and a bigger probe gets no quote.
+const TEN_USDT = "10000000";
 
 type Preview = { data?: { status?: string; rateRay?: string; reason?: string } };
 
@@ -24,12 +25,12 @@ async function previewRate(fetchFn: typeof fetch, body: Record<string, unknown>)
   return Number(data.rateRay) / 1e27;
 }
 
-// Midpoint of Textile's indicative rates for buying and selling $100 of cNGN on Celo.
+// Midpoint of Textile's indicative rates for buying and selling $10 of cNGN on Celo.
 export async function textileMid(fetchFn: typeof fetch = fetch): Promise<PricePoint> {
   const at = Date.now();
   const [buyRate, sellRate] = await Promise.all([
-    previewRate(fetchFn, { sellToken: USDT, buyToken: CNGN, sellAmount: HUNDRED_USDT }),
-    previewRate(fetchFn, { sellToken: CNGN, buyToken: USDT, buyAmount: HUNDRED_USDT }),
+    previewRate(fetchFn, { sellToken: USDT, buyToken: CNGN, sellAmount: TEN_USDT }),
+    previewRate(fetchFn, { sellToken: CNGN, buyToken: USDT, buyAmount: TEN_USDT }),
   ]);
   return { source: "textile", price: (buyRate + sellRate) / 2, at };
 }
