@@ -11,7 +11,7 @@ function latestOnchain(tape: Tape) {
     : null;
 }
 
-function Tile({ label, value, sub }: { label: string; value: string; sub: string }) {
+export function Tile({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <Card size="sm">
       <CardHeader>

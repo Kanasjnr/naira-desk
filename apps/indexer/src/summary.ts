@@ -14,6 +14,7 @@ export function fillView(fill: FillRow) {
   return {
     at: fill.at,
     block: fill.block,
+    logIndex: fill.logIndex,
     tx: fill.tx,
     side: fill.side,
     usdt: units(fill.usdt),
