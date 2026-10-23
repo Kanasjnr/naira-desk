@@ -4,12 +4,10 @@ import type { NairaQuote } from "./quote.ts";
 
 export const QUOTE_PATH = "/v1/naira";
 export const TAPE_PATH = "/v1/tape";
-export const PROOF_PATH = "/proof";
 
 type ApiOptions = {
   quote: () => NairaQuote | undefined;
   tape: () => unknown;
-  page: string;
   paywall: ReturnType<typeof createPaywall>;
   onSale?: (sale: Extract<Charge, { ok: true }>["sale"]) => void;
 };
@@ -29,7 +27,7 @@ function send(res: ServerResponse, status: number, body: unknown, headers = {}) 
 
 // The public, paid side of the agent. A request without a payment gets the 402 price;
 // with one, the agent settles it onchain and answers with the current naira quote.
-export function createApiServer({ quote, tape, page, paywall, onSale }: ApiOptions) {
+export function createApiServer({ quote, tape, paywall, onSale }: ApiOptions) {
   return createServer(async (req, res) => {
     const path = new URL(req.url ?? "/", "http://localhost").pathname.replace(/\/$/, "");
     if (req.method === "OPTIONS") {
@@ -50,18 +48,10 @@ export function createApiServer({ quote, tape, page, paywall, onSale }: ApiOptio
         endpoints: [
           { path: QUOTE_PATH, price: paywall.accepts[0]?.maxAmountRequired, x402: paywall.accepts },
           { path: TAPE_PATH, price: "0" },
-          { path: PROOF_PATH, price: "0" },
         ],
       });
     }
     if (path === TAPE_PATH) return send(res, 200, tape());
-    if (path === PROOF_PATH) {
-      res.writeHead(200, {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-cache",
-      });
-      return res.end(page);
-    }
     if (path !== QUOTE_PATH) return send(res, 404, { error: "not found" });
 
     // Never charge for an answer we can't give.

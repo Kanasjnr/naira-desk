@@ -34,3 +34,4 @@ UTC--*
 # Logs and OS files
 *.log
 .DS_Store
+next-env.d.ts

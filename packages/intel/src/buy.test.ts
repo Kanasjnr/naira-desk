@@ -148,7 +148,7 @@ describe("createBuyer", () => {
     expect(await buyer.chat(messages)).toEqual({ text: '{"risk":"low"}', txHash: settlement });
     expect(bodies[0]).toEqual({
       model: "maximo-atlas-1.3",
-      max_tokens: 256,
+      max_tokens: 1024,
       temperature: 0,
       messages,
     });

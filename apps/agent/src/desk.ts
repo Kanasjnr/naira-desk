@@ -1,5 +1,5 @@
 import { receiptsOf } from "@naira-desk/intel";
-import { appendJsonl, readJsonl } from "@naira-desk/shared";
+import { appendJsonl, briefError, readJsonl } from "@naira-desk/shared";
 import { type Decision, decide, type Mode, nextCheckAt, type Trigger } from "./modes.ts";
 import type { Assessment } from "./street.ts";
 
@@ -47,7 +47,7 @@ export function createRiskDesk({
       const result = await check().catch(
         (error): Assessment => ({
           level: "elevated",
-          reason: `couldn't check: ${error instanceof Error ? error.message : error}`,
+          reason: `couldn't check: ${briefError(error)}`,
           posts: 0,
           calls: [],
         }),
@@ -65,6 +65,7 @@ export function createRiskDesk({
       console.log(
         `${change}${decision.mode} after ${trigger}${detail ? ` (${detail})` : ""}: ${result.level}, ${result.reason}${rates} [paid ${paid}]`,
       );
+      if (result.unreadable) console.warn(`unreadable rating: ${result.unreadable}`);
     })().finally(() => {
       running = undefined;
     });
