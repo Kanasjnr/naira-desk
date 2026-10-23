@@ -66,6 +66,32 @@ describe("buildTape", () => {
     });
   });
 
+  it("shows only the first line of an old error dump", () => {
+    const old = buildTape({
+      decisions: [
+        {
+          at: HOUR,
+          trigger: "schedule",
+          mode: "caution",
+          check: {
+            level: "elevated",
+            reason: "couldn't check: HTTP request failed.\n\nURL: https://forno.celo.org/",
+            posts: 0,
+            calls: [],
+          },
+        },
+      ],
+      purchases: [],
+      reviews: [],
+      sales: [],
+      rates: [],
+      wallet: "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
+      now: HOUR,
+    });
+    expect(old.decisions[0]?.reason).toBe("couldn't check: HTTP request failed.");
+    expect(old.current?.reason).toBe("couldn't check: HTTP request failed.");
+  });
+
   it("keeps every decision's receipts, including ones logged the old way", () => {
     expect(tape.decisions.map((d) => d.receipts)).toEqual([["0xold"], ["0xnew"]]);
     expect(tape.decisions[1]).toMatchObject({ trigger: "price-jump", detail: "+64 bps in 9 min" });

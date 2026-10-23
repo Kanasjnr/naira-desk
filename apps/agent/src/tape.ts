@@ -27,6 +27,8 @@ const WEEK = 7 * 86_400_000;
 const usd = (atomic: bigint) => Number(atomic) / 1e6;
 const sum = (items: { amount: string }[]) =>
   items.reduce((total, i) => total + BigInt(i.amount), 0n);
+// Checks from before errors were shortened stored whole error dumps as the reason.
+const firstLine = (reason: string) => reason.split("\n")[0] ?? reason;
 
 // Everything the dashboard shows, from the agent's own logs. Every paid call, review
 // and sale carries its transaction so a reader can check it on Celoscan.
@@ -56,7 +58,7 @@ export function buildTape({ decisions, purchases, reviews, sales, rates, wallet,
       ? {
           mode: last.mode,
           level: last.check.level,
-          reason: last.check.reason,
+          reason: firstLine(last.check.reason),
           checkedAt: last.at,
           nextCheckAt: nextCheckAt(last),
           until: last.until ?? null,
@@ -70,7 +72,7 @@ export function buildTape({ decisions, purchases, reviews, sales, rates, wallet,
       detail: d.detail ?? null,
       mode: d.mode,
       level: d.check.level,
-      reason: d.check.reason,
+      reason: firstLine(d.check.reason),
       posts: d.check.posts,
       street: d.check.street ?? null,
       receipts: receiptsOf(d.check),
