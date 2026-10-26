@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { assertCeloMainnet, createCeloPublicClient } from "@naira-desk/chain";
-import { type Hex, http, isHash } from "viem";
+import { assertCeloMainnet, createCeloPublicClient, takerAbi } from "@naira-desk/chain";
+import { decodeDeployData, encodeDeployData, type Hex, http, isHash } from "viem";
 import { rpcUrl } from "./env.ts";
 
 function stop(message: string): never {
@@ -24,8 +24,10 @@ const [{ input }, { contractAddress }] = await Promise.all([
 if (!contractAddress) stop(`${hash} didn't create a contract`);
 if (!input.startsWith(bytecode.object)) stop("the deployed code isn't this build of Taker.sol");
 
-// Everything after the creation code: the constructor arguments, then our attribution tag.
-const constructorArgs = `0x${input.slice(bytecode.object.length)}`;
+// The deploy input ends with our attribution tag, so decode the arguments and encode them alone.
+const { args } = decodeDeployData({ abi: takerAbi, bytecode: bytecode.object, data: input });
+const encoded = encodeDeployData({ abi: takerAbi, bytecode: bytecode.object, args });
+const constructorArgs = `0x${encoded.slice(bytecode.object.length)}`;
 const forge = spawnSync(
   "forge",
   [
@@ -36,10 +38,9 @@ const forge = spawnSync(
     "packages/contracts",
     "--chain-id",
     "42220",
+    // Blockscout imports Sourcify matches, and Sourcify answers without an API key.
     "--verifier",
-    "blockscout",
-    "--verifier-url",
-    "https://celo.blockscout.com/api/",
+    "sourcify",
     "--constructor-args",
     constructorArgs,
     "--watch",
