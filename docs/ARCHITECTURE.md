@@ -255,9 +255,10 @@ One small, immutable contract, owned by A.
 
 | Function | Who | What |
 |---|---|---|
-| `take(swap, token, fee, minProfit)` | A only | Approves the reactor for the length of the call, runs Textile's swap calldata (the reactor sends the maker's `token` to the Taker and takes USD₮ to the maker), sells everything it received on the Uniswap `token`/USD₮ pool at fee tier `fee`, and reverts unless its USD₮ balance grew by at least `minProfit`. Emits `Took(token, spent, received)`. |
-| `isValidSignature(hash, signature)` | anyone (view) | EIP-1271: valid when A signed `hash`. Textile uses it to check the `TakerControl` proof. |
-| `withdraw(token, to, amount)` | A only | Moves profits to the operator's wallet. |
+| `take(swap, token, fee, minProfit)` | A only | Approves the reactor for the length of the call, runs Textile's swap calldata (the reactor sends the maker's `token` to the Taker and takes USD₮ to the maker), sells everything it received on the Uniswap `token`/USD₮ pool at fee tier `fee`, and reverts unless its USD₮ balance grew by at least `minProfit`. Emits `Took(token, amount, spent, received)`. |
+| `isValidSignature(hash, signature)` | anyone (view) | EIP-1271: valid when A signed `boundHash(hash)`, the hash bound to the Taker's address and chain. Textile uses it to check the `TakerControl` proof. |
+| `withdraw(token, to, amount)` | A only | Moves profits to the operator's wallet. `address(0)` sends native CELO. |
+| `receive()` | anyone | Accepts native CELO. The reactor sends any CELO it holds to the filler at the end of a fill, so refusing it would let anyone block every take with 1 wei. |
 
 The reactor, USD₮, router and owner are immutable. No upgrades, no Permit2 allowance, no other entry points. Quotes whose `spender` isn't the reactor (yield-vault orders routed through Textile's executor) are skipped.
 
@@ -483,9 +484,10 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo an
 |---|---|---|
 | Stitch key S leaks | Attacker can sign vault orders | Still needs Warp's co-sign and the vault caps. A calls `setStrategySigner`, which invalidates every order ✅ |
 | Agent key A leaks | Owner actions on the vault; the Taker's float | Can't move LP assets ✅. Keep the Taker's float small and withdraw profits to the operator's wallet. Move ownership to a Safe once real money is involved. |
-| Bug in the Taker | Float lost | Small and immutable, owner-only entry points, unit tests plus a mainnet-fork replay of a real Textile order. Float stays small. |
-| EIP-1271 says yes to any hash A signed | A signature could be replayed as the Taker's | The Taker never gives Permit2 an allowance, and approves the reactor only inside `take`. A only signs Textile's `TakerControl` challenges and its own transactions. |
+| Bug in the Taker | Float lost | Small and immutable, owner-only entry points. Fork tests replay real cNGN and wBRL fills and cover lost races, expired and used quotes, wrong tokens and pools, short balances and signature replay. Float stays small. |
+| A's other signatures passed off as the Taker's | Funds moved with a signature A gave for something else | The Taker only accepts A's signature over the hash bound to its own address and chain. It never gives Permit2 an allowance, and approves the reactor only inside `take`. |
 | Another bot drains the pool first | The take reverts | Costs gas only, under a cent |
+| Someone sends the reactor 1 wei of CELO | Every take reverts on the refund | The Taker accepts native CELO |
 | Bad or stale price source | Mispriced vault quotes | Pool TWAP, peg check against Luno and Textile, Stitch rejects stale feeds ✅ |
 | Naira shock or arbitrage wave | LP losses | Quoting at the pool, paid news checks, per-order caps |
 | Machine down | No quotes, no takes | Fails safe. LPs can still redeem; forced in-kind exit after 48h ✅ |
@@ -506,7 +508,7 @@ naira-desk/
 │  └─ web/        dashboard (Next.js)
 ├─ packages/
 │  ├─ chain/      tagged clients, addresses, ABIs
-│  ├─ contracts/  Taker.sol (Foundry)
+│  ├─ contracts/  Taker.sol and its fork tests (Foundry)
 │  ├─ intel/      paid calls through buy
 │  ├─ pricing/    Uniswap, Textile and Luno adapters, fair value
 │  └─ shared/     constants, files, types

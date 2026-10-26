@@ -42,6 +42,7 @@ pnpm fix     # apply formatting and safe lint fixes
 pnpm agent   # the agent: price feed for Stitch, risk desk, naira API
 pnpm indexer # vault events and fills from chain into SQLite, served on http://127.0.0.1:8789/api/summary
 pnpm web     # the dashboard on http://localhost:3000 (AGENT_URL and INDEXER_URL default to ports 8788 and 8789)
+pnpm --filter @naira-desk/contracts test  # the Taker contract, replaying real Textile fills on a Celo fork (needs Foundry)
 ```
 
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
