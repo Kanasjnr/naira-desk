@@ -30,3 +30,12 @@ jobs:
       - run: pnpm exec biome ci .
       - run: pnpm typecheck
       - run: pnpm test
+      - uses: foundry-rs/foundry-toolchain@v1
+      # The Taker's tests replay real fills on a Celo fork. Caching the RPC reads keeps them
+      # working once forno no longer serves state that old.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.foundry/cache/rpc
+          key: foundry-rpc-${{ hashFiles('packages/contracts/test/fixtures/**') }}
+      - run: forge fmt --check && forge test
+        working-directory: packages/contracts
