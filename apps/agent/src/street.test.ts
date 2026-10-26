@@ -8,6 +8,7 @@ const at = (naira: number): FairValue => ({
   price: 1 / naira,
   at: 0,
   sources: ["a", "b"],
+  naira: 1 / 1377.8,
 });
 const calm = (rates: RiskCheck["rates"]): RiskCheck => ({
   level: "low",

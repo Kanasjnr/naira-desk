@@ -7,6 +7,7 @@ const price = (value: number): FairValue => ({
   price: value,
   at: 0,
   sources: ["a", "b"],
+  naira: 1 / 1377.8,
 });
 const disagree: FairValue = {
   ok: false,
