@@ -15,7 +15,7 @@ The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/addre
 ## How it works
 
 - **Vault:** a Textile Operator Vault (cNGN/USD₮) on Celo mainnet. LPs deposit USD₮ or cNGN and receive shares. It quotes at the price cNGN trades on Uniswap, so nobody can buy from it and sell to the pool at a profit. The operator can't withdraw LP funds; the contract enforces it.
-- **Taker:** a small contract the agent owns. When a Textile maker quotes below Uniswap, on cNGN, wBRL, wARS or any pair with a pool, the agent asks for a firm quote in the contract's name, and the contract fills it and sells on Uniswap in the same transaction. If the trade wouldn't make money, it reverts.
+- **Taker:** a small contract the agent owns. When a Textile maker quotes below Uniswap, on cNGN, wBRL, wARS or any pair with a pool, the agent asks for a firm quote in the contract's name, and the contract fills it and sells on Uniswap in the same transaction. If the trade wouldn't make money, it reverts. The agent checks every 15 seconds and logs every gap it sees, taken or not.
 - **Execution:** the agent's wallet owns the vault. Textile's Stitch bot answers RFQs with its own key as the vault's strategy signer, and Textile's Warp service co-signs every fill.
 - **Agent:** prices cNGN where it trades onchain, checks it still tracks the naira on Luno and Textile, and watches for sharp moves. On a schedule, and whenever the price jumps or cNGN drifts from the naira, it pays through [buy](https://usebuy.ai) for recent naira news, street-rate posts and an AI read of both. It checks the onchain price against the official and parallel rates people are quoting, then quotes normally, carefully, or stops quoting for at least two hours. Every decision is logged with its payment receipts, and once a day the agent rates each service it paid on their ERC-8004 identities, scored on how many paid calls delivered.
 - **Naira API:** the agent sells what it learns. `GET /v1/naira` returns the onchain cNGN rate, the official and parallel rates from the posts it bought, and its current risk call with the payment receipts behind it. It costs $0.005 over x402, payable in USDC, USD₮ or USA₮ with any [buy](https://usebuy.ai) client, and the agent settles each payment onchain itself.
@@ -39,7 +39,7 @@ Requires Node 24 (see `.nvmrc`) and pnpm 10.
 pnpm install
 pnpm check   # lint, typecheck and tests
 pnpm fix     # apply formatting and safe lint fixes
-pnpm agent   # the agent: price feed for Stitch, risk desk, naira API
+pnpm agent   # the agent: price feed for Stitch, risk desk, naira API, trader (TAKES=off only watches)
 pnpm indexer # vault events and fills from chain into SQLite, served on http://127.0.0.1:8789/api/summary
 pnpm web     # the dashboard on http://localhost:3000 (AGENT_URL and INDEXER_URL default to ports 8788 and 8789)
 pnpm --filter @naira-desk/contracts test  # the Taker contract, replaying real Textile fills on a Celo fork (needs Foundry)

@@ -4,14 +4,13 @@ import {
   createTaggedWalletClient,
   readKeyFile,
   TAKER,
-  takerAbi,
 } from "@naira-desk/chain";
 import { briefError, USDT } from "@naira-desk/shared";
-import { erc20Abi, formatEther, formatUnits, http, parseEventLogs, parseUnits } from "viem";
+import { erc20Abi, formatEther, formatUnits, http, parseUnits } from "viem";
 import { files, rpcUrl } from "./env.ts";
 import { bestGap, type Gap, gasInUsdt, ladderFor, MARKETS } from "./gaps.ts";
-import { cancelQuote, reportFill, requestQuote, rfqLadders } from "./rfq.ts";
-import { poolQuoter, quoteProblem, takerProof } from "./taker.ts";
+import { rfqLadders } from "./rfq.ts";
+import { poolQuoter, takeGap } from "./taker.ts";
 
 function stop(message: string): never {
   console.error(message);
@@ -76,51 +75,11 @@ if (!best) {
 console.log(`best: ${best.market.name}, ${usd(best.profit - gas)} after gas`);
 if (dryRun) process.exit(0);
 
-const quote = await requestQuote(
-  { sellToken: USDT, buyToken: best.market.token, sellAmount: best.spend, taker: TAKER },
-  await takerProof(client, wallet),
-);
-const problem = quoteProblem(quote, float);
-if (problem || quote.status !== "quoted") {
-  if (quote.status === "quoted") await cancelQuote(quote.rfqId, quote.claimToken).catch(() => {});
-  stop(problem ?? "no quote");
-}
-
 // The take has to at least pay for its own gas, or it reverts.
-const args = [quote.transactions.swap.data, best.market.token, best.market.fee, gas] as const;
-try {
-  const { result } = await client.simulateContract({
-    address: TAKER,
-    abi: takerAbi,
-    functionName: "take",
-    args,
-    account: wallet.account.address,
-  });
-  console.log(
-    `firm quote: pay ${usd(BigInt(quote.quote.takerPays))}, simulated profit ${usd(result)}`,
-  );
-} catch (error) {
-  await cancelQuote(quote.rfqId, quote.claimToken).catch(() => {});
-  stop(`the firm quote doesn't pay: ${briefError(error)}`);
-}
-
-const hash = await wallet.writeContract({
-  address: TAKER,
-  abi: takerAbi,
-  functionName: "take",
-  args,
-});
-const receipt = await client.waitForTransactionReceipt({ hash });
-console.log(`https://celoscan.io/tx/${hash}`);
-if (receipt.status !== "success") stop("the take reverted");
-await reportFill(quote.rfqId, quote.claimToken, hash).catch((error) =>
-  console.log(`couldn't report the fill to Textile: ${briefError(error)}`),
+const took = await takeGap({ client, wallet }, best, float, gas).catch((error) =>
+  stop(briefError(error)),
 );
-
-const [took] = parseEventLogs({ abi: takerAbi, eventName: "Took", logs: receipt.logs });
-if (took) {
-  const { spent, received } = took.args;
-  console.log(
-    `paid ${usd(spent)}, the pool paid ${usd(received)}: ${usd(received - spent)}, gas ${formatEther(receipt.gasUsed * receipt.effectiveGasPrice)} CELO`,
-  );
-}
+console.log(`https://celoscan.io/tx/${took.hash}`);
+console.log(
+  `paid ${usd(took.spent)}, the pool paid ${usd(took.received)}: ${usd(took.received - took.spent)}, gas ${formatEther(took.gasPaid)} CELO`,
+);

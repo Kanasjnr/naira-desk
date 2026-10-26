@@ -61,16 +61,18 @@ export async function bestGap(
   );
   if (top > 0n) sizes.add(top);
 
-  let best: Gap | undefined;
-  for (const spend of sizes) {
-    const bought = ladderBuys(ladder, spend);
-    if (!bought) continue;
-    const pays = await poolPays(market, bought);
-    if (!best || pays - spend > best.profit) {
-      best = { market, spend, bought, poolPays: pays, profit: pays - spend };
-    }
-  }
-  return best;
+  const gaps = await Promise.all(
+    [...sizes].map(async (spend): Promise<Gap | undefined> => {
+      const bought = ladderBuys(ladder, spend);
+      if (!bought) return undefined;
+      const pays = await poolPays(market, bought);
+      return { market, spend, bought, poolPays: pays, profit: pays - spend };
+    }),
+  );
+  return gaps.reduce<Gap | undefined>(
+    (best, gap) => (gap && (!best || gap.profit > best.profit) ? gap : best),
+    undefined,
+  );
 }
 
 // A take's gas in USD₮, priced at what Textile's makers pay for CELO.
