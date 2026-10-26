@@ -9,8 +9,8 @@ import {ISwapRouter02, Taker} from "../src/Taker.sol";
 
 /// Replays real Textile fills from 25 and 26 Oct against Celo as it was the block before, with
 /// the Taker's code at the address the quotes were made out to. The state they read is committed
-/// in test/fork-cache: after adding a fixture, run the tests once and copy
-/// ~/.foundry/cache/rpc/celo/<block> there.
+/// in test/fork-cache: after adding a fixture, run the tests once with Foundry 1.8.6, as CI does,
+/// and copy ~/.foundry/cache/rpc/celo/<block> there.
 contract TakerReplayTest is Test {
     using stdJson for string;
 

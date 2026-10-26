@@ -30,7 +30,10 @@ jobs:
       - run: pnpm exec biome ci .
       - run: pnpm typecheck
       - run: pnpm test
+      # Pinned: the committed fork state below is in this version's cache format.
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.6
       # The Taker's tests replay real fills on a Celo fork. Public RPCs don't reliably serve state
       # that old, so the state they read is committed and only block headers come from the RPC.
       - run: |
