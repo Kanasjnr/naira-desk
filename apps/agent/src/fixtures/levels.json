@@ -1,0 +1,89 @@
+{
+  "asOf": "2026-10-26T14:15:04.376Z",
+  "pairs": [
+    {
+      "sellToken": "0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e",
+      "buyToken": "0x0dc4f92879b7670e5f4e4e6e3c801d229129d90d",
+      "sellDecimals": 6,
+      "buyDecimals": 18,
+      "minSellAmount": "1000000",
+      "maxSellAmount": "29433115",
+      "levels": [
+        {
+          "sellAmount": "1000000",
+          "buyAmount": "1668231066205299493808"
+        },
+        {
+          "sellAmount": "1471655",
+          "buyAmount": "2455058410552272522515"
+        },
+        {
+          "sellAmount": "2943311",
+          "buyAmount": "4910118489500782477835"
+        },
+        {
+          "sellAmount": "7358278",
+          "buyAmount": "12275297057950074910991"
+        },
+        {
+          "sellAmount": "14716557",
+          "buyAmount": "24550594115900149821982"
+        },
+        {
+          "sellAmount": "22074836",
+          "buyAmount": "36825891173850224732973"
+        },
+        {
+          "sellAmount": "29433115",
+          "buyAmount": "49100901573177855617462"
+        }
+      ]
+    },
+    {
+      "sellToken": "0x471ece3750da237f93b8e339c536989b8978a438",
+      "buyToken": "0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e",
+      "sellDecimals": 18,
+      "buyDecimals": 6,
+      "minSellAmount": "1266945394653000000",
+      "maxSellAmount": "838402276255320109059977",
+      "levels": [
+        {
+          "sellAmount": "1266945394653000000",
+          "buyAmount": "99940"
+        },
+        {
+          "sellAmount": "8384022762553201090599",
+          "buyAmount": "661353905"
+        },
+        {
+          "sellAmount": "20960056906383002726499",
+          "buyAmount": "1653384764"
+        },
+        {
+          "sellAmount": "41920113812766005452998",
+          "buyAmount": "3306769528"
+        },
+        {
+          "sellAmount": "83840227625532010905997",
+          "buyAmount": "6613539057"
+        },
+        {
+          "sellAmount": "209600569063830027264994",
+          "buyAmount": "16533847644"
+        },
+        {
+          "sellAmount": "419201138127660054529988",
+          "buyAmount": "33067695289"
+        },
+        {
+          "sellAmount": "628801707191490081794982",
+          "buyAmount": "49601542934"
+        },
+        {
+          "sellAmount": "838402276255320109059977",
+          "buyAmount": "66135390579"
+        }
+      ]
+    }
+  ]
+}
