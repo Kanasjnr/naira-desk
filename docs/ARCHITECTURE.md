@@ -330,7 +330,7 @@ sequenceDiagram
   participant R as Reactor
   participant M as Maker
   participant U as Uniswap pool
-  loop every few seconds
+  loop every 15 seconds
     TR->>X: GET /v2/rfq/levels
     TR->>Q: what each pool pays back at those sizes
     TR->>TR: size with the most profit after gas, capped by the Taker's USD₮
@@ -458,7 +458,7 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo, t
 
 **Indexer (SQLite):** `cursor` (last block), `vault_events` (block, log index, tx, time, name, args), `fills` (vault fills: block, log index, tx, time, order hash, filler, sender, side, USD₮, cNGN), and `taker_trades` (block, log index, tx, time, token, spent, received).
 
-**Agent (JSONL in `~/.naira-desk`):** `decisions`, `purchases`, `rates`, `reviews`, `sales`.
+**Agent (JSONL in `~/.naira-desk`):** `decisions`, `purchases`, `rates`, `reviews`, `sales`, and `trades`: every gap the trader sees (at most every 5 minutes per market, sized as if the Taker held $100), every take, and every miss with its reason.
 
 **P&L:**
 - Vault: change in NAV per share, after fees.
