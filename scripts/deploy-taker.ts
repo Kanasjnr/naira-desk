@@ -13,6 +13,9 @@ import { USDT } from "@naira-desk/shared";
 import { encodeDeployData, formatEther, getAddress, type Hex, http, isAddressEqual } from "viem";
 import { keyFile, rpcUrl } from "./env.ts";
 
+// The operator's own wallet: the only place the Taker can ever pay out to.
+const BENEFICIARY = "0xa1599790B763E537bd15b5b912012e5Fb65491a3";
+
 function stop(message: string): never {
   console.error(message);
   process.exit(1);
@@ -29,7 +32,7 @@ await assertCeloMainnet(client);
 
 const wallet = createTaggedWalletClient(await readKeyFile(keyFile), http(rpcUrl));
 const agent = wallet.account.address;
-const args = [agent, REACTOR, USDT, SWAP_ROUTER] as const;
+const args = [agent, BENEFICIARY, REACTOR, USDT, SWAP_ROUTER] as const;
 const data = encodeDeployData({ abi: takerAbi, bytecode: bytecode.object, args });
 
 const [gas, fees, balance] = await Promise.all([
@@ -40,6 +43,7 @@ const [gas, fees, balance] = await Promise.all([
 const maxCost = gas * fees.maxFeePerGas;
 
 console.log(`owner    ${agent}`);
+console.log(`pays out ${BENEFICIARY}`);
 console.log(`reactor  ${REACTOR}`);
 console.log(`usdt     ${USDT}`);
 console.log(`router   ${SWAP_ROUTER}`);
@@ -61,6 +65,7 @@ console.log(`taker    ${taker}`);
 // Read the settings back from the contract rather than trusting what was sent.
 const settings = [
   ["owner", agent],
+  ["beneficiary", BENEFICIARY],
   ["reactor", REACTOR],
   ["usdt", USDT],
   ["router", SWAP_ROUTER],

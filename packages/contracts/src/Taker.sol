@@ -5,7 +5,9 @@ import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 interface ISwapRouter02 {
     struct ExactInputSingleParams {
@@ -26,26 +28,32 @@ interface ISwapRouter02 {
 
 /// @notice Fills Textile quotes made out to it and sells what it bought on Uniswap in the same
 /// transaction. A trade that doesn't grow its USD₮ by `minProfit` reverts.
+/// @dev The owner is a hot key that trades. Even with that key, funds only ever leave to
+/// `beneficiary`: `take` can't lower the USD₮ balance, `withdraw` pays nobody else, and the only
+/// signature the contract accepts is Textile's taker-control message.
 contract Taker is IERC1271 {
     using SafeERC20 for IERC20;
 
     address public immutable owner;
+    address public immutable beneficiary;
     address public immutable reactor;
     IERC20 public immutable usdt;
     ISwapRouter02 public immutable router;
 
     event Took(address indexed token, uint256 amount, uint256 spent, uint256 received);
 
-    error NotOwner();
+    error Unauthorized();
     error NoProfit(uint256 before, uint256 afterwards);
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
-    }
-
-    constructor(address owner_, address reactor_, IERC20 usdt_, ISwapRouter02 router_) {
+    constructor(
+        address owner_,
+        address beneficiary_,
+        address reactor_,
+        IERC20 usdt_,
+        ISwapRouter02 router_
+    ) {
         owner = owner_;
+        beneficiary = beneficiary_;
         reactor = reactor_;
         usdt = usdt_;
         router = router_;
@@ -55,9 +63,9 @@ contract Taker is IERC1271 {
     /// @param fee The Uniswap pool's fee tier for `token`/USD₮.
     function take(bytes calldata swap, IERC20 token, uint24 fee, uint256 minProfit)
         external
-        onlyOwner
         returns (uint256 profit)
     {
+        if (msg.sender != owner) revert Unauthorized();
         uint256 start = usdt.balanceOf(address(this));
         usdt.forceApprove(reactor, start);
         (bool ok, bytes memory reason) = reactor.call(swap);
@@ -90,29 +98,49 @@ contract Taker is IERC1271 {
     }
 
     /// @param token The token to send, or address(0) for native CELO.
-    function withdraw(IERC20 token, address to, uint256 amount) external onlyOwner {
-        if (address(token) == address(0)) Address.sendValue(payable(to), amount);
-        else token.safeTransfer(to, amount);
+    function withdraw(IERC20 token, uint256 amount) external {
+        if (msg.sender != owner && msg.sender != beneficiary) revert Unauthorized();
+        if (address(token) == address(0)) Address.sendValue(payable(beneficiary), amount);
+        else token.safeTransfer(beneficiary, amount);
     }
 
     /// @dev The reactor sends any native CELO it holds to the filler at the end of a fill, so
     /// refusing it would let anyone block every take with 1 wei.
     receive() external payable {}
 
-    /// @dev Textile checks the owner controls this taker through here. The owner signs the hash
-    /// bound to this contract and chain, so no other signature of theirs passes as this contract's.
+    /// @notice Textile checks the owner controls this taker by asking it to vouch for its
+    /// taker-control message. Celo's USD₮ also asks here for permits and transfer authorizations,
+    /// so the message is rebuilt from this contract's own address and chain and nothing else passes.
+    /// @param signature The nonce and issuedAt sent to Textile, then the owner's signature of the
+    /// message: 32 + 32 + 65 bytes.
     function isValidSignature(bytes32 hash, bytes calldata signature)
         external
         view
         returns (bytes4)
     {
-        (address signer, ECDSA.RecoverError error,) = ECDSA.tryRecover(boundHash(hash), signature);
+        if (signature.length != 129) return 0xffffffff;
+        bytes32 nonce = bytes32(signature[:32]);
+        uint256 issuedAt = uint256(bytes32(signature[32:64]));
+        if (hash != MessageHashUtils.toEthSignedMessageHash(bytes(takerControl(nonce, issuedAt)))) {
+            return 0xffffffff;
+        }
+        (address signer, ECDSA.RecoverError error,) = ECDSA.tryRecover(hash, signature[64:]);
         return error == ECDSA.RecoverError.NoError && signer == owner
             ? IERC1271.isValidSignature.selector
             : bytes4(0xffffffff);
     }
 
-    function boundHash(bytes32 hash) public view returns (bytes32) {
-        return keccak256(abi.encode(address(this), block.chainid, hash));
+    /// @notice Textile's `eip191` taker-control text for this contract.
+    function takerControl(bytes32 nonce, uint256 issuedAt) public view returns (string memory) {
+        return string.concat(
+            "Textile Taker Control\nVersion: 1\n\nSign to prove you control this wallet so Textile can request a firm\nquote for it. This does not approve any transfer, trade or allowance.\n\nWallet: ",
+            Strings.toHexString(address(this)),
+            "\nChain: ",
+            Strings.toString(block.chainid),
+            "\nNonce: ",
+            Strings.toHexString(uint256(nonce), 32),
+            "\nIssued at: ",
+            Strings.toString(issuedAt)
+        );
     }
 }

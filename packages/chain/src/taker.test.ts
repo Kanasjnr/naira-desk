@@ -10,12 +10,13 @@ describe("takerAbi", () => {
       .map((item) => [item.name, toFunctionSelector(item)]);
     expect(Object.fromEntries(selectors)).toEqual({
       owner: "0x8da5cb5b",
+      beneficiary: "0x38af3eed",
       reactor: "0xab572650",
       usdt: "0x2f48ab7d",
       router: "0xf887ea40",
       take: "0x02793dca",
-      withdraw: "0xd9caed12",
-      boundHash: "0x722f3b4c",
+      withdraw: "0xf3fef3a3",
+      takerControl: "0xef5a7091",
       isValidSignature: "0x1626ba7e",
     });
     const took = takerAbi.find((item) => item.type === "event" && item.name === "Took");
