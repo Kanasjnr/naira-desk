@@ -3,11 +3,12 @@ import {
   createCeloPublicClient,
   createTaggedWalletClient,
   readKeyFile,
+  TAKER,
   tokenBalance,
 } from "@naira-desk/chain";
 import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
 import { cngnSources, type FairValue } from "@naira-desk/pricing";
-import { appendJsonl, readJsonl } from "@naira-desk/shared";
+import { appendJsonl, readJsonl, USDT } from "@naira-desk/shared";
 import { formatUnits, http } from "viem";
 import { createApiServer, QUOTE_PATH } from "./api.ts";
 import { createRiskDesk, openDecisions } from "./desk.ts";
@@ -18,8 +19,11 @@ import { createPricer } from "./pricer.ts";
 import { nairaQuote } from "./quote.ts";
 import { openRateHistory } from "./rates.ts";
 import { createReviewer, feedbackPoster } from "./reviews.ts";
+import { rfqLadders } from "./rfq.ts";
 import { againstStreet } from "./street.ts";
+import { poolQuoter, takeGap } from "./taker.ts";
 import { buildTape, type Sale } from "./tape.ts";
+import { createTrader } from "./trader.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
@@ -55,6 +59,18 @@ const reviewer = await createReviewer({
   give: feedbackPoster(wallet, client),
   logPath: files.reviews,
 });
+const takes = env.TAKES !== "off";
+const trader = createTrader({
+  ladders: () => rfqLadders(),
+  float: () => tokenBalance(client)(USDT, TAKER),
+  gasPrice: async () => (await client.estimateFeesPerGas()).maxFeePerGas,
+  gasLeft: () => client.getBalance({ address: wallet.account.address }),
+  poolPays: poolQuoter(client),
+  take: (gap, float, minProfit) => takeGap({ client, wallet }, gap, float, minProfit),
+  log: (trade) => appendJsonl(files.trades, trade),
+  takes,
+});
+console.log(`trader ${takes ? "taking" : "watching"} Textile gaps for the Taker at ${TAKER}`);
 const watch = createPriceWatch();
 const rates = await openRateHistory(files.rates);
 const sales = await readJsonl<Sale>(files.sales);
@@ -75,6 +91,7 @@ async function loop() {
     .catch((error) => console.error("failed to log a rate", error));
   void (alert ? desk.alert(alert.trigger, alert.detail) : desk.tick());
   void reviewer.tick();
+  void trader.tick();
   if (!stopped) timer = setTimeout(loop, refreshMs);
 }
 await loop();
