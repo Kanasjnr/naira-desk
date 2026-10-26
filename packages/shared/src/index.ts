@@ -1,3 +1,11 @@
-export { ATTRIBUTION_CODE, CELO_CHAIN_ID, CNGN, OUR_WALLETS, USDT } from "./constants.ts";
+export {
+  ATTRIBUTION_CODE,
+  CELO_CHAIN_ID,
+  CNGN,
+  OUR_WALLETS,
+  USDT,
+  WARS,
+  WBRL,
+} from "./constants.ts";
 export { briefError } from "./errors.ts";
 export { appendJsonl, dataFile, readJsonl } from "./files.ts";

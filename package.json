@@ -25,6 +25,7 @@
     "price": "node scripts/price.ts",
     "agent": "node apps/agent/src/main.ts",
     "agent:review": "node apps/agent/src/review-now.ts",
+    "taker:take": "node apps/agent/src/take-now.ts",
     "indexer": "node apps/indexer/src/main.ts",
     "web": "pnpm --filter @naira-desk/web dev"
   },

@@ -7,6 +7,12 @@ export const TAKER_DEPLOY_BLOCK = 81_120_840n;
 // Uniswap's SwapRouter02 on Celo. The Taker sells what it bought through it.
 export const SWAP_ROUTER = "0x5615CDAb10dc425a742d643d949a7F474C01abc4";
 
+// Uniswap's QuoterV2: what a pool would pay, simulated, so it's read with eth_call.
+export const UNISWAP_QUOTER = "0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8";
+export const uniswapQuoterAbi = parseAbi([
+  "function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
+]);
+
 // packages/contracts/src/Taker.sol
 export const takerAbi = parseAbi([
   "constructor(address owner, address beneficiary, address reactor, address usdt, address router)",
