@@ -2,60 +2,62 @@ import { describe, expect, it } from "vitest";
 import { fairValue } from "./fair-value.ts";
 
 const now = 1_760_000_000_000;
-const point = (source: string, price: number, ageMs = 0) => ({ source, price, at: now - ageMs });
+const point = (source: string, ngnPerUsdt: number, ageMs = 0) => ({
+  source,
+  price: 1 / ngnPerUsdt,
+  at: now - ageMs,
+});
 
 describe("fairValue", () => {
-  it("takes the median and reports the oldest input time", () => {
+  // The market on 24 Oct 2026: the pool held cNGN about 0.75% rich to the naira.
+  it("prices at the pool while cNGN tracks the naira", () => {
     const result = fairValue(
-      [point("a", 0.000733, 10_000), point("b", 0.0007331), point("c", 0.0007332)],
+      [point("uniswap", 1367.64), point("luno", 1377.8, 10_000), point("textile", 1379.5)],
       now,
     );
     expect(result).toEqual({
       ok: true,
-      price: 0.0007331,
+      price: 1 / 1367.64,
       at: now - 10_000,
-      sources: ["a", "b", "c"],
+      sources: ["uniswap", "luno", "textile"],
+      naira: (1 / 1379.5 + 1 / 1377.8) / 2,
     });
   });
 
-  it("averages the middle two when there's an even count", () => {
-    const result = fairValue([point("a", 0.000733), point("b", 0.0007331)], now);
-    expect(result.ok && result.price).toBeCloseTo(0.00073305, 10);
+  it("stops when cNGN drifts too far from the naira", () => {
+    const result = fairValue([point("uniswap", 1367.64), point("luno", 1400)], now);
+    expect(result).toEqual({ ok: false, reason: "cNGN is 2.37% off the naira", disagree: true });
   });
 
-  it("drops an outlier when the others agree", () => {
+  it("checks against the median naira rate", () => {
     const result = fairValue(
-      [point("a", 0.000733), point("b", 0.0007331), point("c", 0.00074)],
+      [point("uniswap", 1367.64), point("luno", 1377.8), point("textile", 1500), point("x", 1370)],
       now,
     );
-    expect(result.ok && result.sources).toEqual(["a", "b"]);
+    expect(result.ok).toBe(true);
   });
 
-  it("refuses when two sources disagree", () => {
-    const result = fairValue([point("a", 0.000733), point("b", 0.00074)], now);
-    expect(result).toEqual({
-      ok: false,
-      reason: "sources disagree by more than 25 bps",
-      disagree: true,
-    });
+  it("needs the onchain price", () => {
+    const result = fairValue([point("luno", 1377.8), point("textile", 1379.5)], now);
+    expect(result).toEqual({ ok: false, reason: "no fresh uniswap price" });
   });
 
-  it("counts sources, not readings", () => {
-    const result = fairValue([point("a", 0.000733, 30_000), point("a", 0.000733)], now);
-    expect(result).toEqual({ ok: false, reason: "need 2 fresh sources, have 1" });
+  it("needs a naira rate to check against", () => {
+    const result = fairValue([point("uniswap", 1367.64, 30_000), point("uniswap", 1367.64)], now);
+    expect(result).toEqual({ ok: false, reason: "no naira rate to check cNGN against" });
   });
 
   it("ignores stale, future-dated and broken readings", () => {
     const result = fairValue(
       [
-        point("a", 0.000733),
-        point("b", 0.000733, 61_000),
-        point("c", 0.000733, -60_000),
-        point("d", Number.NaN),
-        point("e", 0),
+        point("uniswap", 1367.64),
+        point("luno", 1377.8, 61_000),
+        point("textile", 1379.5, -60_000),
+        point("x", Number.NaN),
+        { source: "y", price: 0, at: now },
       ],
       now,
     );
-    expect(result).toEqual({ ok: false, reason: "need 2 fresh sources, have 1" });
+    expect(result).toEqual({ ok: false, reason: "no naira rate to check cNGN against" });
   });
 });

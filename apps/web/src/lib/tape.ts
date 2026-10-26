@@ -27,7 +27,8 @@ export type Tape = {
     until: number | null;
     street: Street | null;
   } | null;
-  rates: { at: number; ngnPerUsdt: number }[];
+  // `naira` is the off-chain rate cNGN was checked against.
+  rates: { at: number; ngnPerUsdt: number; naira?: number }[];
   decisions: Decision[];
   research: {
     calls: number;

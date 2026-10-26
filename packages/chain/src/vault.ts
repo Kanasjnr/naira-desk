@@ -5,6 +5,8 @@ export const VAULT_FACTORY = "0x88104decA449C797632AfdcA77A3140b24cD844A";
 
 export const VAULT: Address = "0xD7137d85607BE18628CE00B1020895cEBceEAD6C";
 
+export const VAULT_DEPLOY_BLOCK = 80_101_665n;
+
 // Textile's keys, as preset on its vault deploy page.
 const TEXTILE_ROLES = {
   riskSigner: "0x9bC2f7601f22fFA95bD9dDbF9Bc11d06f54B32a3",
@@ -38,6 +40,29 @@ export const operatorVaultAbi = parseAbi([
   "function pendingSettlement() view returns (uint256)",
   "function pendingCorridor() view returns (uint256)",
   "function setStrategySigner(address next)",
+]);
+
+// What the vault logs about LP money, NAV, fees and safety. Shares are the vault's own ERC-20.
+export const vaultEventsAbi = parseAbi([
+  "event DepositRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets, bool inCorridor)",
+  "event DepositCancelled(address indexed controller, uint256 indexed epochId, uint256 assets)",
+  "event DepositEpochProcessed(uint256 indexed epochId, uint256 assets, uint256 shares, uint256 price)",
+  "event DepositEpochVoided(uint256 indexed epochId)",
+  "event RedeemRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 shares)",
+  "event RedeemEpochSettled(uint256 indexed epochId, uint256 shares, uint256 settlementOut, uint256 corridorOut)",
+  "event Claimed(address indexed controller, address indexed receiver, uint256 indexed epochId, uint256 sharesOut, uint256 settlementOut, uint256 corridorOut)",
+  "event ClaimedYield(address indexed controller, address indexed receiver, uint256 indexed epochId, uint256 yieldOut)",
+  "event RedeemYieldSettled(uint256 indexed epochId, uint256 yieldOut)",
+  "event EpochClosed(uint256 indexed epochId, bool isDeposit, uint256 units)",
+  "event NavSettled(uint256 nav, uint256 timestamp)",
+  "event MarkUpdated(uint256 markWad, uint256 markSettlementWad, uint256 markCorridorWad)",
+  "event FeeAccrued(address indexed recipient, uint256 shares, uint256 elapsed)",
+  "event IdleAllocated(uint256 assets)",
+  "event IdleRecalled(uint256 assets)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event Paused(address indexed account)",
+  "event Unpaused(address indexed guardian)",
+  "event StrategySignerRotated(address indexed previous, address indexed current, uint256 tradingEpoch)",
 ]);
 
 const DAY = 86_400n;
