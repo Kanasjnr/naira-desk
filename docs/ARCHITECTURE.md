@@ -50,7 +50,7 @@ Everything (fills, NAV per share, Taker P&L, paid calls, tags) is indexed from c
 | 12 | The Uniswap cNGN/USD₮ pool sits near ₦1,367.6 per USD₮ while the off-chain naira (Luno, Textile makers) is ₦1,376–1,382. From 21 to 24 Oct, all 44 cNGN fills on Textile (about $4,350) were takers buying cNGN. None sold. | ✅ pool reads, Luno, reactor logs | The flow is arbitrage. A maker that fills it loses about 0.9%, so the vault prices at the pool (7.5) and fills rarely. |
 | 13 | Another entrant's bot took these gaps with its own money: $21,968 filled and $196.80 profit in about 6 hours, mostly wBRL in one hour while a maker priced 2.7% under Uniswap. It trades in two transactions, and once it was left holding wBRL when the second one failed. | ✅ its public trade log and onchain txs | Taking pays. One transaction per trade removes the risk of being left holding a token. |
 | 14 | The reactor is UniswapX's `LimitOrderReactor`. Textile orders carry `PreferredFillerValidation`: only the taker named in the quote can fill before the order deadline. | ✅ Blockscout-verified source, decoded orders | The Taker contract must be the named taker. |
-| 15 | `POST /v2/rfq/request` binds a firm quote to `taker`, proven by an EIP-712 `TakerControl` signature. Contract takers are verified through EIP-1271. The taker must already hold what it sells (`insufficient_funds`). | ✅ `api.textilecredit.com/v2/openapi.json` | The Taker answers EIP-1271 for the agent key and holds a USD₮ float. No flash fills: a trade is at most the float. |
+| 15 | `POST /v2/rfq/request` binds a firm quote to `taker`, proven by an EIP-712 `TakerControl` signature. Contract takers are verified through EIP-1271. The taker must already hold what it sells (`insufficient_funds`). | ✅ `api.textilecredit.com/v2/openapi.json` | The Taker answers EIP-1271 with the agent key, using Textile's `eip191` text, and holds a USD₮ float. No flash fills: a trade is at most the float. |
 | 16 | `GET /v2/rfq/levels` returns every pair's ladder (depth and indicative prices, fee included) in one call, cached about 2s. Nothing is reserved. | ✅ OpenAPI and a live call | The agent scans every pair every few seconds for free and only asks for a firm quote when there's a gap. |
 | 17 | Snapshot, 26 Oct 11:00 UTC: wBRL 1.0% under Uniswap with $47k of maker depth, but the pool only takes about $420 before the gap closes. cNGN and wARS 0.2%, with $2–3 of maker depth. Gas is about 200 gwei, so a Taker trade costs under a cent. | ✅ live levels and QuoterV2 | Gaps are real but small and short-lived. Size each trade to the pool's depth, not the maker's. |
 
@@ -140,17 +140,17 @@ flowchart TB
   G -->|pause and unpause| V
   RA -->|rotate risk signer, 24h delay| V
   V -->|fee shares| F
-  A -->|take, withdraw, EIP-1271 signer| T
-  T -->|profits withdrawn| F
+  A -->|take, withdraw, signs Textile's control text| T
+  T -->|withdraw pays only here| F
 ```
 
 Vault rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` ✅.
 
 **Why Stitch has its own key:** the vault lets the strategy signer close redemption epochs, so Stitch sends its own transactions, and we can't tag those. Keeping them off A keeps every transaction from the agent wallet tagged.
 
-**Why the Taker trusts A's signatures:** Textile needs proof that whoever asks for a quote controls the taker. The Taker answers `isValidSignature` for A's signatures. It never approves Permit2 and only approves the reactor inside `take`, so a signature can't move its funds.
+**Why A can trade but can't take the money:** A is a hot key, so the Taker is built so that even A can't move its funds anywhere but the operator's wallet. `take` can't lower its USD₮, `withdraw` only pays the operator's wallet, and `isValidSignature` only vouches for Textile's taker-control text for this contract. That last part matters because Celo's USD₮ also asks a contract holder's `isValidSignature` before honouring a `permit` or `transferWithAuthorization`, so a contract that vouched for anything A signed could be emptied with a signature.
 
-**Why fees and profits go to the operator's wallet:** A is a hot key on a server. Vault fee shares are paid straight to the operator's wallet, and the Taker's profits are withdrawn there, so only the trading float sits behind A.
+**Why fees and profits go to the operator's wallet:** A is a hot key on a server. Vault fee shares are paid straight to the operator's wallet, and the Taker can only pay out there.
 
 ---
 
@@ -205,7 +205,7 @@ Today it all runs on the operator's laptop. The Taker only earns while the agent
 | Contract | Address | Status |
 |---|---|---|
 | Naira Desk Vault | `0xD7137d85607BE18628CE00B1020895cEBceEAD6C` | ✅ deployed 14 Oct |
-| Taker | to deploy | |
+| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, Sourcify exact match |
 | OperatorVaultFactory | `0x88104decA449C797632AfdcA77A3140b24cD844A` | ✅ |
 | LimitOrderReactor | `0xa9AA0a64769cBed4d3B1Ceb4Df01CdE915C235b3` | ✅ |
 | PreferredFillerValidation | `0x10B9EbA3a175Df418a35CB8329a527691EE258C5` | ✅ |
@@ -255,11 +255,13 @@ One small, immutable contract, owned by A.
 
 | Function | Who | What |
 |---|---|---|
-| `take(swap, token, fee, minProfit)` | A only | Approves the reactor for the length of the call, runs Textile's swap calldata (the reactor sends the maker's `token` to the Taker and takes USD₮ to the maker), sells everything it received on the Uniswap `token`/USD₮ pool at fee tier `fee`, and reverts unless its USD₮ balance grew by at least `minProfit`. Emits `Took(token, spent, received)`. |
-| `isValidSignature(hash, signature)` | anyone (view) | EIP-1271: valid when A signed `hash`. Textile uses it to check the `TakerControl` proof. |
-| `withdraw(token, to, amount)` | A only | Moves profits to the operator's wallet. |
+| `take(swap, token, fee, minProfit)` | A only | Approves the reactor for the length of the call, runs Textile's swap calldata (the reactor sends the maker's `token` to the Taker and takes USD₮ to the maker), sells everything it received on the Uniswap `token`/USD₮ pool at fee tier `fee`, and reverts unless its USD₮ balance grew by at least `minProfit`. Emits `Took(token, amount, spent, received)`. |
+| `isValidSignature(hash, signature)` | anyone (view) | EIP-1271 for Textile's taker check only. `signature` is the nonce and issuedAt sent to Textile, then A's `personal_sign` of Textile's `eip191` taker-control text. The Taker rebuilds that text for its own address and chain and vouches only when `hash` is that text's hash and A signed it. |
+| `takerControl(nonce, issuedAt)` | anyone (view) | The text above, so the agent and anyone checking can read exactly what A signs. |
+| `withdraw(token, amount)` | A or the beneficiary | Pays the beneficiary, the operator's wallet. `address(0)` sends native CELO. |
+| `receive()` | anyone | Accepts native CELO. The reactor sends any CELO it holds to the filler at the end of a fill, so refusing it would let anyone block every take with 1 wei. |
 
-The reactor, USD₮, router and owner are immutable. No upgrades, no Permit2 allowance, no other entry points. Quotes whose `spender` isn't the reactor (yield-vault orders routed through Textile's executor) are skipped.
+The owner, beneficiary, reactor, USD₮ and router are immutable. No upgrades, no Permit2 allowance, no other entry points. Quotes whose `spender` isn't the reactor (yield-vault orders routed through Textile's executor) are skipped.
 
 ---
 
@@ -428,7 +430,7 @@ flowchart LR
 
 **Taker.** Nothing new: they use the Textile app or API, and our vault is one of the makers that may quote.
 
-**Operator.** Runs `pnpm agent`, `pnpm indexer` and `pnpm web`, keeps Stitch on, funds the Taker's float, and withdraws profits.
+**Operator.** Runs `pnpm agent`, `pnpm indexer` and `pnpm web`, keeps Stitch on, funds the Taker's float, and withdraws profits from their own wallet.
 
 **Judge.** Opens the dashboard: vault value and share price, volume filled, Taker trades and P&L, paid research, reviews and API sales, each linked to Celoscan. The agent's ERC-8004 card links the vault, Taker and repo.
 
@@ -448,7 +450,7 @@ flowchart LR
 | LP deposits | LP wallets | ❌ unless their wallet adds the suffix | |
 | buy settlements | buy's facilitator | ❌ | Payer is A |
 
-The agent card (onchain as a data URI, from `agent-card.json`) links the repo and the vault. The Taker is added once deployed.
+The agent card (onchain as a data URI, from `agent-card.json`) links the repo, the vault and the Taker.
 
 ---
 
@@ -482,10 +484,11 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo an
 | Threat | Impact | Mitigation |
 |---|---|---|
 | Stitch key S leaks | Attacker can sign vault orders | Still needs Warp's co-sign and the vault caps. A calls `setStrategySigner`, which invalidates every order ✅ |
-| Agent key A leaks | Owner actions on the vault; the Taker's float | Can't move LP assets ✅. Keep the Taker's float small and withdraw profits to the operator's wallet. Move ownership to a Safe once real money is involved. |
-| Bug in the Taker | Float lost | Small and immutable, owner-only entry points, unit tests plus a mainnet-fork replay of a real Textile order. Float stays small. |
-| EIP-1271 says yes to any hash A signed | A signature could be replayed as the Taker's | The Taker never gives Permit2 an allowance, and approves the reactor only inside `take`. A only signs Textile's `TakerControl` challenges and its own transactions. |
+| Agent key A leaks | Owner actions on the vault; trading with the Taker | Can't move LP assets ✅. Can't move the Taker's funds either: they only go to the operator's wallet, and the Taker won't vouch for a USD₮ permit or transfer authorization. Move ownership to a Safe once real money is involved. |
+| Bug in the Taker | Float lost | Small and immutable, owner-only entry points. Fork tests replay real cNGN and wBRL fills and cover lost races, expired and used quotes, wrong tokens and pools, short balances and signature replay. Float stays small. |
+| A signature moving the Taker's USD₮ | Celo's USD₮ honours `permit` and `transferWithAuthorization` for a contract holder that vouches for them | The Taker only vouches for Textile's taker-control text. A fork test shows a contract that vouches for anything is emptied, and the Taker isn't, even with A's own signature. |
 | Another bot drains the pool first | The take reverts | Costs gas only, under a cent |
+| Someone sends the reactor 1 wei of CELO | Every take reverts on the refund | The Taker accepts native CELO |
 | Bad or stale price source | Mispriced vault quotes | Pool TWAP, peg check against Luno and Textile, Stitch rejects stale feeds ✅ |
 | Naira shock or arbitrage wave | LP losses | Quoting at the pool, paid news checks, per-order caps |
 | Machine down | No quotes, no takes | Fails safe. LPs can still redeem; forced in-kind exit after 48h ✅ |
@@ -506,7 +509,7 @@ naira-desk/
 │  └─ web/        dashboard (Next.js)
 ├─ packages/
 │  ├─ chain/      tagged clients, addresses, ABIs
-│  ├─ contracts/  Taker.sol (Foundry)
+│  ├─ contracts/  Taker.sol and its fork tests (Foundry)
 │  ├─ intel/      paid calls through buy
 │  ├─ pricing/    Uniswap, Textile and Luno adapters, fair value
 │  └─ shared/     constants, files, types
@@ -535,7 +538,7 @@ gantt
   Submit                           :milestone, m1, 2026-11-08, 0d
 ```
 
-**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker is next.
+**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker was deployed on 26 Oct; the trader that drives it is next.
 
 ---
 

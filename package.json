@@ -20,6 +20,8 @@
     "vault:deploy": "node scripts/deploy-vault.ts",
     "vault:status": "node scripts/vault-status.ts",
     "vault:set-signer": "node scripts/vault-signer.ts",
+    "taker:deploy": "forge build --root packages/contracts && node scripts/deploy-taker.ts",
+    "taker:verify": "forge build --root packages/contracts && node scripts/verify-taker.ts",
     "price": "node scripts/price.ts",
     "agent": "node apps/agent/src/main.ts",
     "agent:review": "node apps/agent/src/review-now.ts",

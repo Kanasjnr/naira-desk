@@ -9,6 +9,7 @@ export {
 } from "./public.ts";
 export { REACTOR, reactorAbi } from "./reactor.ts";
 export { REPUTATION_REGISTRY, reputationRegistryAbi } from "./reputation.ts";
+export { SWAP_ROUTER, TAKER, TAKER_DEPLOY_BLOCK, takerAbi } from "./taker.ts";
 export {
   operatorVaultAbi,
   VAULT,
