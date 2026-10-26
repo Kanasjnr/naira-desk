@@ -1,7 +1,8 @@
 import type { PricePoint } from "./types.ts";
 
 export type FairValue =
-  | { ok: true; price: number; at: number; sources: string[] }
+  // `naira` is the off-chain rate cNGN was checked against, in the same units as `price`.
+  | { ok: true; price: number; at: number; sources: string[]; naira: number }
   | { ok: false; reason: string; disagree?: true };
 
 type Limits = { anchor: string; maxAgeMs: number; maxPegGapBps: number };
@@ -51,5 +52,6 @@ export function fairValue(points: PricePoint[], now: number, limits = defaults):
     price: anchor.price,
     at: Math.min(anchor.at, ...references.map((point) => point.at)),
     sources: [anchor.source, ...references.map((point) => point.source)],
+    naira,
   };
 }

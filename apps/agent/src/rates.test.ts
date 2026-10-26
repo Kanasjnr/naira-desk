@@ -6,11 +6,12 @@ import { describe, expect, it } from "vitest";
 import { openRateHistory } from "./rates.ts";
 
 const MIN = 60_000;
-const at = (naira: number): FairValue => ({
+const at = (onchain: number): FairValue => ({
   ok: true,
-  price: 1 / naira,
+  price: 1 / onchain,
   at: 0,
-  sources: ["a", "b"],
+  sources: ["uniswap", "luno"],
+  naira: 1 / 1377.8,
 });
 
 describe("openRateHistory", () => {
@@ -23,8 +24,8 @@ describe("openRateHistory", () => {
     await history.observe(at(1363.456), 11 * MIN);
 
     expect(history.samples()).toEqual([
-      { at: 0, ngnPerUsdt: 1361.2 },
-      { at: 11 * MIN, ngnPerUsdt: 1363.46 },
+      { at: 0, ngnPerUsdt: 1361.2, naira: 1377.8 },
+      { at: 11 * MIN, ngnPerUsdt: 1363.46, naira: 1377.8 },
     ]);
     expect((await openRateHistory(path)).samples()).toHaveLength(2);
   });
@@ -34,6 +35,8 @@ describe("openRateHistory", () => {
     const history = await openRateHistory(path);
     await history.observe(at(1360), 0);
     await history.observe(at(1370), 31 * 24 * 60 * MIN);
-    expect(history.samples()).toEqual([{ at: 31 * 24 * 60 * MIN, ngnPerUsdt: 1370 }]);
+    expect(history.samples()).toEqual([
+      { at: 31 * 24 * 60 * MIN, ngnPerUsdt: 1370, naira: 1377.8 },
+    ]);
   });
 });

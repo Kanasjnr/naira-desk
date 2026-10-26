@@ -21,7 +21,8 @@ const fair: FairValue = {
   ok: true,
   price: 1 / 1361.2,
   at: 1_792_150_000_000,
-  sources: ["textile", "uniswap"],
+  sources: ["uniswap", "luno"],
+  naira: 1 / 1377.8,
 };
 const decision: Decision = {
   at: 1_792_149_189_256,
@@ -89,7 +90,7 @@ describe("createApiServer", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       pair: "NGN/USD",
-      onchain: { ngnPerUsdt: 1361.2, sources: ["textile", "uniswap"] },
+      onchain: { ngnPerUsdt: 1361.2, sources: ["uniswap", "luno"] },
       street: { official: 1331.61, parallel: 1375, onchainOffBandPct: 0 },
       risk: { mode: "normal", level: "low", evidence: ["0xa1"] },
       agent: { agentId: 9908 },

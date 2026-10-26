@@ -4,7 +4,13 @@ import type { FairValue } from "@naira-desk/pricing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createFeedServer, FEED_PATH, feedResponse } from "./feed.ts";
 
-const good: FairValue = { ok: true, price: 0.0007334, at: 1_760_000_000_999, sources: ["a", "b"] };
+const good: FairValue = {
+  ok: true,
+  price: 0.0007334,
+  at: 1_760_000_000_999,
+  sources: ["a", "b"],
+  naira: 0.0007334,
+};
 
 describe("feedResponse", () => {
   it("serves price and whole-second timestamp", () => {

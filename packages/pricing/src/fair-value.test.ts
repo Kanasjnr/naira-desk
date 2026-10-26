@@ -20,6 +20,7 @@ describe("fairValue", () => {
       price: 1 / 1367.64,
       at: now - 10_000,
       sources: ["uniswap", "luno", "textile"],
+      naira: (1 / 1379.5 + 1 / 1377.8) / 2,
     });
   });
 
