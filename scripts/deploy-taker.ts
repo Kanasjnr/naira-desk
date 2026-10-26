@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   assertCeloMainnet,
   createCeloPublicClient,
@@ -70,8 +71,27 @@ const settings = [
   ["usdt", USDT],
   ["router", SWAP_ROUTER],
 ] as const;
+
+// forno spreads reads over nodes, and one that hasn't reached the deploy block answers with
+// nothing, so read at that block and give a lagging node a moment.
+async function readBack(functionName: (typeof settings)[number][0]) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await client.readContract({
+        address: taker,
+        abi: takerAbi,
+        functionName,
+        blockNumber: receipt.blockNumber,
+      });
+    } catch (error) {
+      if (attempt === 5) throw error;
+      await sleep(3_000);
+    }
+  }
+}
+
 for (const [functionName, expected] of settings) {
-  const actual = await client.readContract({ address: taker, abi: takerAbi, functionName });
+  const actual = await readBack(functionName);
   if (!isAddressEqual(actual, expected)) stop(`${functionName} is ${actual}, expected ${expected}`);
 }
 console.log("settings match");

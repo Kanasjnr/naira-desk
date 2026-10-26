@@ -1,4 +1,8 @@
-import { parseAbi } from "viem";
+import { type Address, parseAbi } from "viem";
+
+// Deployed 26 Oct 2026, tx 0xcdb5822f257b08f33695c042ff602110d5021c49cfa748b2d1d589211e967630.
+export const TAKER: Address = "0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57";
+export const TAKER_DEPLOY_BLOCK = 81_120_840n;
 
 // Uniswap's SwapRouter02 on Celo. The Taker sells what it bought through it.
 export const SWAP_ROUTER = "0x5615CDAb10dc425a742d643d949a7F474C01abc4";

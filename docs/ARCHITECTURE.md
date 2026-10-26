@@ -205,7 +205,7 @@ Today it all runs on the operator's laptop. The Taker only earns while the agent
 | Contract | Address | Status |
 |---|---|---|
 | Naira Desk Vault | `0xD7137d85607BE18628CE00B1020895cEBceEAD6C` | ✅ deployed 14 Oct |
-| Taker | to deploy | |
+| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, Sourcify exact match |
 | OperatorVaultFactory | `0x88104decA449C797632AfdcA77A3140b24cD844A` | ✅ |
 | LimitOrderReactor | `0xa9AA0a64769cBed4d3B1Ceb4Df01CdE915C235b3` | ✅ |
 | PreferredFillerValidation | `0x10B9EbA3a175Df418a35CB8329a527691EE258C5` | ✅ |
@@ -450,7 +450,7 @@ flowchart LR
 | LP deposits | LP wallets | ❌ unless their wallet adds the suffix | |
 | buy settlements | buy's facilitator | ❌ | Payer is A |
 
-The agent card (onchain as a data URI, from `agent-card.json`) links the repo and the vault. The Taker is added once deployed.
+The agent card (onchain as a data URI, from `agent-card.json`) links the repo, the vault and the Taker.
 
 ---
 
@@ -538,7 +538,7 @@ gantt
   Submit                           :milestone, m1, 2026-11-08, 0d
 ```
 
-**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker is next.
+**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker was deployed on 26 Oct; the trader that drives it is next.
 
 ---
 
