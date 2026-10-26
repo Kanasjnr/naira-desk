@@ -31,11 +31,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - uses: foundry-rs/foundry-toolchain@v1
-      # The Taker's tests replay real fills on a Celo fork. Caching the RPC reads keeps them
-      # working once forno no longer serves state that old.
-      - uses: actions/cache@v4
-        with:
-          path: ~/.foundry/cache/rpc
-          key: foundry-rpc-${{ hashFiles('packages/contracts/test/fixtures/**') }}
-      - run: forge fmt --check && forge test
+      # The Taker's tests replay real fills on a Celo fork. Public RPCs don't reliably serve state
+      # that old, so the state they read is committed and only block headers come from the RPC.
+      - run: |
+          mkdir -p ~/.foundry/cache/rpc
+          cp -r test/fork-cache/celo ~/.foundry/cache/rpc/
+          forge fmt --check
+          forge test
         working-directory: packages/contracts
