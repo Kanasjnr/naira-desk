@@ -49,6 +49,29 @@ export type Tape = {
     usd: number;
     recent: { at: number; txHash: string; payer: string; asset: string; amount: string }[];
   };
+  // Missing from an agent that predates the trader.
+  taker?: TakerTape;
+};
+
+export type Gap = {
+  at: number;
+  market: string;
+  spendUsd: number;
+  profitUsd: number;
+  gasUsd: number;
+};
+
+export type TakerTape = {
+  address: string;
+  status: {
+    at: number;
+    floatUsd: number;
+    gasCelo: number;
+    idle: "watching only" | "float under $1" | "under 0.1 CELO for gas" | null;
+  } | null;
+  seen: { count: number; last24h: number; takes: number; misses: number };
+  gaps: Gap[];
+  misses: { at: number; market: string; spendUsd: number; reason: string }[];
 };
 
 const AGENT_URL = process.env.AGENT_URL ?? "http://127.0.0.1:8788";

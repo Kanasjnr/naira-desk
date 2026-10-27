@@ -55,7 +55,7 @@ const HOUR = 3_600_000;
 const LAGOS_OFFSET = HOUR;
 
 // Ticks on Lagos midnights for a multi-day view, otherwise every few hours.
-function timeTicks(from: number, to: number) {
+export function timeTicks(from: number, to: number) {
   const span = to - from;
   const step = span > 36 * HOUR ? 24 * HOUR : span > 12 * HOUR ? 6 * HOUR : 2 * HOUR;
   const ticks = [];

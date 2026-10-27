@@ -27,9 +27,10 @@ console.log(`indexing ${VAULT} from block ${start}`);
 const sync = createSync({
   client,
   store,
-  onChunk: ({ from, to, events, fills }) => {
-    if (!events && !fills) return;
-    console.log(`blocks ${from}-${to}: ${events} vault events, ${fills} fills`);
+  onChunk: ({ from, to, events, fills, takes }) => {
+    if (events || fills)
+      console.log(`blocks ${from}-${to}: ${events} vault events, ${fills} fills`);
+    if (takes) console.log(`blocks ${from}-${to}: ${takes} Taker trades`);
   },
 });
 

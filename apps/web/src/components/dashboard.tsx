@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { clock } from "@/lib/format";
+import type { Taker } from "@/lib/taker";
 import type { Tape } from "@/lib/tape";
 import type { Vault } from "@/lib/vault";
 import { Reviews, Sales } from "./activity";
@@ -9,6 +10,7 @@ import { DecisionTape } from "./decision-tape";
 import { Figures } from "./figures";
 import { RatesChart } from "./rates-chart";
 import { StatusCard } from "./status-card";
+import { TakerSection } from "./taker";
 import { VaultSection } from "./vault";
 
 const REFRESH_MS = 30_000;
@@ -35,9 +37,14 @@ function usePolled<T>(path: string, initial: T | null) {
   return { data, stale };
 }
 
-export function Dashboard({ initial }: { initial: { tape: Tape | null; vault: Vault | null } }) {
+export function Dashboard({
+  initial,
+}: {
+  initial: { tape: Tape | null; vault: Vault | null; taker: Taker | null };
+}) {
   const { data: tape, stale } = usePolled("/api/tape", initial.tape);
   const vault = usePolled("/api/vault", initial.vault);
+  const taker = usePolled("/api/taker", initial.taker);
 
   return (
     <div className="space-y-4">
@@ -53,6 +60,13 @@ export function Dashboard({ initial }: { initial: { tape: Tape | null; vault: Va
       )}
       <div className={`transition-opacity ${vault.stale ? "opacity-60" : ""}`}>
         <VaultSection vault={vault.data} />
+      </div>
+      <div className={`transition-opacity ${taker.stale ? "opacity-60" : ""}`}>
+        <TakerSection
+          taker={taker.data}
+          tape={tape?.taker ?? null}
+          now={taker.data?.fetchedAt ?? tape?.generatedAt ?? 0}
+        />
       </div>
       {tape && (
         <div className={`space-y-4 transition-opacity ${stale ? "opacity-60" : ""}`}>
