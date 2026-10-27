@@ -1,6 +1,12 @@
-import { OUR_WALLETS } from "@naira-desk/shared";
-import { type Address, formatUnits, isAddressEqual, zeroAddress } from "viem";
-import type { FillRow, VaultEvent } from "./store.ts";
+import { CNGN, OUR_WALLETS, WARS, WBRL } from "@naira-desk/shared";
+import { type Address, formatEther, formatUnits, isAddressEqual, zeroAddress } from "viem";
+import type { FillRow, TakeRow, VaultEvent } from "./store.ts";
+
+const MARKETS: { name: string; token: Address; decimals: number }[] = [
+  { name: "cNGN", token: CNGN, decimals: 6 },
+  { name: "wBRL", token: WBRL, decimals: 18 },
+  { name: "wARS", token: WARS, decimals: 18 },
+];
 
 // USDT, cNGN and vault shares all have 6 decimals.
 const units = (value: bigint) => Number(formatUnits(value, 6));
@@ -49,6 +55,40 @@ export function navHistory(events: VaultEvent[]) {
     }
   }
   return { points, shares: units(supply) };
+}
+
+export function takeView(take: TakeRow) {
+  const market = MARKETS.find((m) => isAddressEqual(m.token, take.token));
+  const spent = units(take.spent);
+  return {
+    at: take.at,
+    block: take.block,
+    logIndex: take.logIndex,
+    tx: take.tx,
+    market: market?.name ?? take.token,
+    amount: market ? Number(formatUnits(take.amount, market.decimals)) : null,
+    spent,
+    received: units(take.received),
+    profit: units(take.received - take.spent),
+    gasCelo: Number(formatEther(take.gasPaid)),
+  };
+}
+
+export function takerSummary(takes: TakeRow[]) {
+  const trades = takes.map(takeView);
+  const total = (rows: typeof trades) => ({
+    count: rows.length,
+    volumeUsdt: rows.reduce((sum, take) => sum + take.spent, 0),
+    profitUsdt: rows.reduce((sum, take) => sum + take.profit, 0),
+    gasCelo: rows.reduce((sum, take) => sum + take.gasCelo, 0),
+  });
+  return {
+    ...total(trades),
+    lastAt: trades.at(-1)?.at ?? null,
+    markets: Object.fromEntries(
+      MARKETS.map(({ name }) => [name, total(trades.filter((take) => take.market === name))]),
+    ),
+  };
 }
 
 export function summarize(events: VaultEvent[], fills: FillRow[]) {

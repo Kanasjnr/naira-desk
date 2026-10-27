@@ -1,7 +1,7 @@
 import { createServer, type ServerResponse } from "node:http";
-import { VAULT } from "@naira-desk/chain";
+import { TAKER, VAULT } from "@naira-desk/chain";
 import type { Store } from "./store.ts";
-import { fillView, navHistory, summarize } from "./summary.ts";
+import { fillView, navHistory, summarize, takerSummary, takeView } from "./summary.ts";
 
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, {
@@ -34,6 +34,16 @@ export function createIndexerApi({
     }
     if (path === "/api/fills") return send(res, 200, store.fills().map(fillView).reverse());
     if (path === "/api/nav") return send(res, 200, navHistory(store.events()).points);
+    if (path === "/api/taker") {
+      const takes = store.takes();
+      const synced = store.takerCursor();
+      return send(res, 200, {
+        taker: TAKER,
+        synced: { block: synced === undefined ? null : Number(synced), at: syncedAt() },
+        ...takerSummary(takes),
+        takes: takes.map(takeView).reverse(),
+      });
+    }
     send(res, 404, { error: "not found" });
   });
 }
