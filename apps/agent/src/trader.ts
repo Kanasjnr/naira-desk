@@ -28,6 +28,14 @@ export type Trade =
     }
   | { at: number; kind: "miss"; market: string; spend: string; reason: string };
 
+// What the last scan found the Taker able to do, and why not, if it can't take.
+export type TraderStatus = {
+  at: number;
+  float: bigint;
+  celo: bigint;
+  idle: "watching only" | "float under $1" | "under 0.1 CELO for gas" | null;
+};
+
 export type TraderOptions = {
   ladders: () => Promise<Ladder[]>;
   float: () => Promise<bigint>;
@@ -61,6 +69,7 @@ export function createTrader({
   let nextAt = 0;
   let lastWarning = "";
   let lowGas = false;
+  let status: TraderStatus | null = null;
 
   async function sighting(gap: Gap, gas: bigint) {
     if (now() - (lastSighting.get(gap.market.name) ?? 0) < SIGHTING_EVERY) return;
@@ -83,7 +92,15 @@ export function createTrader({
     if (takes && celo < MIN_GAS && !lowGas)
       console.warn("the agent has under 0.1 CELO, so it only watches");
     lowGas = celo < MIN_GAS;
-    const canTake = takes && held >= MIN_TAKE && !lowGas;
+    const idle = !takes
+      ? "watching only"
+      : held < MIN_TAKE
+        ? "float under $1"
+        : lowGas
+          ? "under 0.1 CELO for gas"
+          : null;
+    status = { at: now(), float: held, celo, idle };
+    const canTake = idle === null;
 
     let best: Gap | undefined;
     for (const market of MARKETS) {
@@ -132,6 +149,7 @@ export function createTrader({
   }
 
   return {
+    status: () => status,
     tick() {
       if (running || now() < nextAt) return running;
       running = scan()
