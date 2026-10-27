@@ -19,6 +19,9 @@
   --color-series-onchain: var(--series-onchain);
   --color-series-official: var(--series-official);
   --color-series-parallel: var(--series-parallel);
+  --color-market-cngn: var(--market-cngn);
+  --color-market-wbrl: var(--market-wbrl);
+  --color-market-wars: var(--market-wars);
   --color-good: var(--good);
   --color-warning: var(--warning);
   --color-critical: var(--critical);
@@ -81,6 +84,9 @@
   --series-onchain: #2a78d6;
   --series-official: #eb6834;
   --series-parallel: #1baf7a;
+  --market-cngn: #0f8a4f;
+  --market-wbrl: #e0a100;
+  --market-wars: #4a9ee0;
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
@@ -121,6 +127,9 @@
   --series-onchain: #3987e5;
   --series-official: #d95926;
   --series-parallel: #199e70;
+  --market-cngn: #22b36b;
+  --market-wbrl: #f2b820;
+  --market-wars: #6cb6f0;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
