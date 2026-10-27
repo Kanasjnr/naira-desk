@@ -75,18 +75,20 @@ export function takeView(take: TakeRow) {
 }
 
 export function takerSummary(takes: TakeRow[]) {
-  const trades = takes.map(takeView);
-  const total = (rows: typeof trades) => ({
+  const total = (rows: TakeRow[]) => ({
     count: rows.length,
-    volumeUsdt: rows.reduce((sum, take) => sum + take.spent, 0),
-    profitUsdt: rows.reduce((sum, take) => sum + take.profit, 0),
-    gasCelo: rows.reduce((sum, take) => sum + take.gasCelo, 0),
+    volumeUsdt: units(sum(rows.map((take) => take.spent))),
+    profitUsdt: units(sum(rows.map((take) => take.received - take.spent))),
+    gasCelo: Number(formatEther(sum(rows.map((take) => take.gasPaid)))),
   });
   return {
-    ...total(trades),
-    lastAt: trades.at(-1)?.at ?? null,
+    ...total(takes),
+    lastAt: takes.at(-1)?.at ?? null,
     markets: Object.fromEntries(
-      MARKETS.map(({ name }) => [name, total(trades.filter((take) => take.market === name))]),
+      MARKETS.map(({ name, token }) => [
+        name,
+        total(takes.filter((take) => isAddressEqual(take.token, token))),
+      ]),
     ),
   };
 }
