@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [tape, vault, taker] = await Promise.all([fetchTape(), fetchVault(), fetchTaker()]);
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <main className="mx-auto max-w-7xl px-4 py-4">
       <Dashboard initial={{ tape, vault, taker }} />
     </main>
   );

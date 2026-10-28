@@ -34,7 +34,7 @@ export const edge = (profit: number, spend: number) => (spend ? (profit / spend)
 
 function Tip({ title, rows }: { title: string; rows: [string, string][] }) {
   return (
-    <div className="grid min-w-44 gap-1 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
+    <div className="grid min-w-44 gap-1 rounded-sm border bg-popover px-2.5 py-1.5 font-mono text-xs">
       <p className="font-medium">{title}</p>
       {rows.map(([label, value]) => (
         <div key={label} className="flex justify-between gap-4">
