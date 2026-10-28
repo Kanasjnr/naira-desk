@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -88,7 +89,14 @@ export function Sales({ tape }: { tape: Tape }) {
                 <TableRow key={s.txHash}>
                   <TableCell>{when(s.at)}</TableCell>
                   <TableCell>
-                    <AddressLink address={s.payer} />
+                    <span className="flex items-center gap-2">
+                      <AddressLink address={s.payer} />
+                      {s.ours && (
+                        <Badge variant="secondary" title="Our demo buyer, not counted as a sale">
+                          demo
+                        </Badge>
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {dollars(Number(s.amount) / 1e6)}

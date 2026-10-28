@@ -47,7 +47,17 @@ export type Tape = {
   sales: {
     count: number;
     usd: number;
-    recent: { at: number; txHash: string; payer: string; asset: string; amount: string }[];
+    // Missing from an agent that predates the demo buyer.
+    independent?: number;
+    independentUsd?: number;
+    recent: {
+      at: number;
+      txHash: string;
+      payer: string;
+      asset: string;
+      amount: string;
+      ours?: boolean;
+    }[];
   };
   // Missing from an agent that predates the trader.
   taker?: TakerTape;

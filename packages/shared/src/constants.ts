@@ -18,12 +18,14 @@ export const WBRL = "0xD76f5Faf6888e24D9F04Bf92a0c8B921FE4390e0";
 export const WARS = "0x0DC4F92879B7670e5f4e4e6e3c801D229129D90D";
 
 /**
- * Wallets we control: the agent, the operator, Stitch's strategy signer and the Taker.
- * Their trades and deposits never count as independent volume or LPs.
+ * Wallets we control: the agent, the operator, Stitch's strategy signer, the Taker and
+ * the demo buyer of our own API. Their trades, deposits and purchases never count as
+ * independent volume, LPs or sales.
  */
 export const OUR_WALLETS = [
   "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
   "0xa1599790B763E537bd15b5b912012e5Fb65491a3",
   "0x6DAeA09da609B3E6dc6f1E33ed9a325CdF6A562a",
   "0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57",
+  "0x48fe78C8e5Cb3f2Ff22bffD5db987B16F560574F",
 ] as const;

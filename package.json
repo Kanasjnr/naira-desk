@@ -26,10 +26,12 @@
     "agent": "node apps/agent/src/main.ts",
     "agent:review": "node apps/agent/src/review-now.ts",
     "taker:take": "node apps/agent/src/take-now.ts",
+    "api:buy": "node scripts/api-buy.ts",
     "indexer": "node apps/indexer/src/main.ts",
     "web": "pnpm --filter @naira-desk/web dev"
   },
   "dependencies": {
+    "@celo/buy-core": "catalog:",
     "@naira-desk/chain": "workspace:*",
     "@naira-desk/intel": "workspace:*",
     "@naira-desk/pricing": "workspace:*",

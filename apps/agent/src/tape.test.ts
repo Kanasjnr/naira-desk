@@ -123,6 +123,30 @@ describe("buildTape", () => {
     expect(old.taker).toMatchObject({ status: null, gaps: [], misses: [], seen: { count: 0 } });
   });
 
+  it("shows our demo buyer's purchases without counting them as sales", () => {
+    const demo = buildTape({
+      decisions: [],
+      purchases: [],
+      reviews: [],
+      sales: [
+        {
+          at: HOUR,
+          txHash: "0xdemo",
+          payer: "0x48fe78C8e5Cb3f2Ff22bffD5db987B16F560574F",
+          asset: USDT,
+          amount: "5000",
+        },
+      ],
+      rates: [],
+      trades: [],
+      trader: null,
+      wallet: "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
+      now: HOUR,
+    });
+    expect(demo.sales).toMatchObject({ count: 1, independent: 0, independentUsd: 0 });
+    expect(demo.sales.recent[0]?.ours).toBe(true);
+  });
+
   it("shows the gaps the trader saw, its misses and what it can trade with", () => {
     expect(tape.taker).toEqual({
       address: "0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57",
@@ -164,7 +188,7 @@ describe("buildTape", () => {
         "cencori.v1.chat.completions": { calls: 1, usd: 0.01 },
       },
     });
-    expect(tape.sales).toMatchObject({ count: 1, usd: 0.005 });
+    expect(tape.sales).toMatchObject({ count: 1, usd: 0.005, independent: 1 });
     expect(tape.agent).toMatchObject({
       agentId: 9908,
       vault: "0xD7137d85607BE18628CE00B1020895cEBceEAD6C",
