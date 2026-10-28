@@ -15,7 +15,7 @@ import { TakerSection } from "./taker";
 import { Ticker } from "./ticker";
 import { VaultSection } from "./vault";
 
-const REFRESH_MS = 30_000;
+const REFRESH_MS = 15_000;
 
 // Keeps the last good response on screen while it refreshes, and says so if its source goes quiet.
 function usePolled<T>(path: string, initial: T | null) {
@@ -53,7 +53,7 @@ export function Dashboard({
   return (
     <div className="space-y-3">
       <div className={fade(stale)}>
-        <Ticker tape={tape} vault={vault.data} taker={taker.data} />
+        <Ticker tape={tape} vault={vault.data} taker={taker.data} stale={stale} />
       </div>
       {tape ? (
         <div className={`grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] ${fade(stale)}`}>
