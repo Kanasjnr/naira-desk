@@ -55,8 +55,8 @@ function TraderBadge({ tape, now }: { tape: TakerTape | null; now: number }) {
     return (
       <Badge variant="outline" className="gap-1.5 font-semibold">
         <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
-          <span className="relative inline-flex size-2 rounded-full bg-good" />
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-signal opacity-60" />
+          <span className="relative inline-flex size-2 rounded-full bg-signal" />
         </span>
         Taking
       </Badge>
@@ -77,7 +77,7 @@ function TraderBadge({ tape, now }: { tape: TakerTape | null; now: number }) {
 
 function Step({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="min-w-0 flex-1 rounded-lg border bg-muted/30 px-3 py-2">
+    <div className="min-w-0 flex-1 rounded-sm border bg-muted/40 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="truncate font-mono text-base font-semibold tabular-nums">{value}</p>
       {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
@@ -92,9 +92,9 @@ const Arrow = () => (
 // One take end to end: what the maker was paid, what was bought, what the pool paid back.
 function LastTrade({ take, now }: { take: Take | undefined; now: number }) {
   return (
-    <div className="rounded-xl border p-3">
+    <div className="rounded-md border p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">
+        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
           {take ? "Last trade, in one transaction" : "How a take works, in one transaction"}
         </p>
         {take && (
@@ -123,9 +123,9 @@ function LastTrade({ take, now }: { take: Take | undefined; now: number }) {
           sub="in the same transaction"
         />
         <Arrow />
-        <div className="min-w-0 flex-1 rounded-lg border border-good/40 bg-good/10 px-3 py-2">
+        <div className="min-w-0 flex-1 rounded-sm border border-signal/40 bg-signal/10 px-3 py-2">
           <p className="text-xs text-muted-foreground">Keeps</p>
-          <p className="font-mono text-base font-semibold text-good tabular-nums">
+          <p className="font-mono text-base font-semibold text-signal tabular-nums">
             {take ? `+${dollars(take.profit)}` : "the difference"}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -145,12 +145,12 @@ function Markets({ taker, tape }: { taker: Taker | null; tape: TakerTape | null 
         const gaps = tape?.gaps.filter((gap) => gap.market === market) ?? [];
         const widest = Math.max(0, ...gaps.map((gap) => edge(gap.profitUsd, gap.spendUsd)));
         return (
-          <div key={market} className="rounded-xl border p-3">
-            <p className="flex items-center gap-2 font-medium">
+          <div key={market} className="rounded-md border p-3">
+            <p className="flex items-center gap-2 font-mono text-xs font-medium tracking-[0.08em]">
               <MarketDot market={market} />
               {market}/USDT
             </p>
-            <p className="mt-1 font-mono text-xl font-semibold tabular-nums">
+            <p className="num mt-1 text-xl font-medium">
               {totals?.profitUsdt ? `+${dollars(totals.profitUsdt)}` : "$0.00"}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -201,7 +201,7 @@ function Trades({ takes }: { takes: Take[] }) {
             </TableCell>
             <TableCell className="text-right tabular-nums">{dollars(take.spent)}</TableCell>
             <TableCell className="text-right tabular-nums">{dollars(take.received)}</TableCell>
-            <TableCell className="text-right text-good tabular-nums">
+            <TableCell className="text-right text-signal tabular-nums">
               +{dollars(take.profit)}{" "}
               <span className="text-xs text-muted-foreground">
                 {pct(edge(take.profit, take.spent))}
@@ -224,7 +224,9 @@ function Misses({ tape }: { tape: TakerTape | null }) {
   const misses = [...(tape?.misses ?? [])].reverse().slice(0, 8);
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Missed takes</p>
+      <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+        Missed takes
+      </p>
       {misses.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           None. A take that can't land is cancelled before anything is spent.
@@ -232,7 +234,7 @@ function Misses({ tape }: { tape: TakerTape | null }) {
       ) : (
         <ul className="space-y-2">
           {misses.map((miss) => (
-            <li key={`${miss.at}-${miss.market}`} className="rounded-lg border px-3 py-2 text-sm">
+            <li key={`${miss.at}-${miss.market}`} className="rounded-sm border px-3 py-2 text-sm">
               <p className="flex items-center gap-2">
                 <MarketDot market={miss.market} />
                 <span className="font-medium">{miss.market}</span>
@@ -317,15 +319,19 @@ export function TakerSection({
         <Markets taker={taker} tape={tape} />
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border p-3">
-            <p className="text-sm font-medium">Profit over time</p>
+          <div className="rounded-md border p-3">
+            <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+              Profit over time
+            </p>
             <p className="mb-2 text-xs text-muted-foreground">
               USDT the Taker grew by, before gas. Each step is one take.
             </p>
             <ProfitChart takes={takes} now={now} />
           </div>
-          <div className="rounded-xl border p-3">
-            <p className="text-sm font-medium">Gaps the trader saw</p>
+          <div className="rounded-md border p-3">
+            <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+              Gaps the trader saw
+            </p>
             <p className="mb-2 text-xs text-muted-foreground">
               How far below Uniswap a maker priced, at the best size up to $100. Stars are takes.
             </p>
@@ -335,7 +341,9 @@ export function TakerSection({
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <div className="space-y-2">
-            <p className="text-sm font-medium">Trades</p>
+            <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+              Trades
+            </p>
             <Trades takes={takes} />
           </div>
           <Misses tape={tape} />

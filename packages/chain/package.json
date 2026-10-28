@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./identity": "./src/identity.ts",
+    "./taker": "./src/taker.ts",
     "./vault": "./src/vault.ts"
   },
   "scripts": {

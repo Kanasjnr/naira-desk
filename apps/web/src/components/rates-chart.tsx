@@ -3,14 +3,7 @@
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceArea, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
@@ -27,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clock, day, naira, nairaShort, when } from "@/lib/format";
+import { ago, clock, day, naira, nairaShort, when } from "@/lib/format";
 import type { Tape } from "@/lib/tape";
 
 const config = {
@@ -74,6 +67,58 @@ function modeSpans(tape: Tape) {
   });
 }
 
+function latestOnchain(tape: Tape) {
+  const sample = tape.rates.at(-1);
+  if (sample) return { value: sample.ngnPerUsdt, at: sample.at };
+  const street = tape.current?.street;
+  return street?.onchain && tape.current
+    ? { value: street.onchain, at: tape.current.checkedAt }
+    : null;
+}
+
+function Headline({ tape }: { tape: Tape }) {
+  const onchain = latestOnchain(tape);
+  const street = tape.current?.street;
+  const band =
+    street?.official && street.parallel
+      ? `${nairaShort(street.official)} – ${nairaShort(street.parallel)}`
+      : null;
+  // Above means a dollar buys fewer cNGN onchain than naira off-chain.
+  const sample = tape.rates.at(-1);
+  const premium = sample?.naira ? (sample.naira / sample.ngnPerUsdt - 1) * 100 : null;
+
+  return (
+    <div className="flex flex-wrap items-end gap-x-10 gap-y-3 pt-3">
+      <div>
+        <p className="num text-5xl leading-none font-medium tracking-tight">
+          {onchain ? naira(onchain.value) : "—"}
+        </p>
+        <p className="mt-2 font-mono text-xs text-muted-foreground">
+          {onchain ? `per USDT · ${ago(onchain.at, tape.generatedAt)}` : "waiting for a fair value"}
+        </p>
+      </div>
+      <dl className="grid grid-cols-[auto_auto] gap-x-8 gap-y-1 pb-1 font-mono text-xs whitespace-nowrap">
+        <dt className="text-muted-foreground">STREET BAND</dt>
+        <dd className="text-right">{band ?? "—"}</dd>
+        <dt className="text-muted-foreground">VS BAND</dt>
+        <dd className="text-right">
+          {street?.offBandPct == null
+            ? "—"
+            : street.offBandPct === 0
+              ? "inside"
+              : `${street.offBandPct.toFixed(1)}% outside`}
+        </dd>
+        <dt className="text-muted-foreground">VS EXCHANGES</dt>
+        <dd className="text-right">
+          {premium == null
+            ? "—"
+            : `${Math.abs(premium).toFixed(2)}% ${premium >= 0 ? "above" : "below"}`}
+        </dd>
+      </dl>
+    </div>
+  );
+}
+
 export function RatesChart({ tape }: { tape: Tape }) {
   const [table, setTable] = useState(false);
   const rows = rowsFrom(tape);
@@ -81,13 +126,10 @@ export function RatesChart({ tape }: { tape: Tape }) {
   const { ticks, daily } = timeTicks(rows[0]?.at ?? 0, rows.at(-1)?.at ?? 0);
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle>Naira rate: onchain, official and street</CardTitle>
-        <CardDescription>
-          ₦ per US dollar, up to the last 7 days. Official and parallel rates are what people quoted
-          in the posts the agent bought. Shaded spans are when it quoted carefully or stopped.
-        </CardDescription>
+        <CardTitle>cNGN / USDT · onchain · 7 days</CardTitle>
+        <Headline tape={tape} />
         <CardAction>
           <Button
             variant="outline"
@@ -106,7 +148,7 @@ export function RatesChart({ tape }: { tape: Tape }) {
             rate on each risk check.
           </p>
         ) : (
-          <ChartContainer config={config} className="aspect-auto h-80 w-full">
+          <ChartContainer config={config} className="aspect-auto h-72 w-full">
             <LineChart data={rows} margin={{ left: 8, right: 16, top: 8 }}>
               <CartesianGrid vertical={false} />
               {spans.map((span) => (
@@ -114,8 +156,8 @@ export function RatesChart({ tape }: { tape: Tape }) {
                   key={span.from}
                   x1={span.from}
                   x2={span.to}
-                  fill={span.mode === "halted" ? "var(--critical)" : "var(--warning)"}
-                  fillOpacity={0.12}
+                  fill="var(--foreground)"
+                  fillOpacity={span.mode === "halted" ? 0.1 : 0.035}
                   ifOverflow="extendDomain"
                 />
               ))}
@@ -172,8 +214,8 @@ export function RatesChart({ tape }: { tape: Tape }) {
                 dataKey="official"
                 type="stepAfter"
                 stroke="var(--color-official)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
+                strokeWidth={1.5}
+                dot={{ r: 2.5 }}
                 connectNulls
                 isAnimationActive={false}
               />
@@ -181,20 +223,21 @@ export function RatesChart({ tape }: { tape: Tape }) {
                 dataKey="parallel"
                 type="stepAfter"
                 stroke="var(--color-parallel)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                dot={{ r: 2.5 }}
                 connectNulls
                 isAnimationActive={false}
               />
             </LineChart>
           </ChartContainer>
         )}
-        <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap gap-4 font-mono text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-warning/40" /> Caution span
+            <span className="size-2.5 rounded-sm bg-foreground/8" /> Caution span
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-critical/40" /> Halted span
+            <span className="size-2.5 rounded-sm bg-foreground/25" /> Halted span
           </span>
         </div>
         {table && (
