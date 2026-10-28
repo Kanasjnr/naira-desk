@@ -78,8 +78,14 @@ export function Figures({
       />
       <Tile
         label="Reviews · sales"
-        value={tape ? `${tape.reviews.length} · ${tape.sales.count}` : "—"}
-        sub={tape ? `ERC-8004 · ${dollars(tape.sales.usd)} earned` : "agent offline"}
+        value={
+          tape ? `${tape.reviews.length} · ${tape.sales.independent ?? tape.sales.count}` : "—"
+        }
+        sub={
+          tape
+            ? `ERC-8004 · ${dollars(tape.sales.independentUsd ?? tape.sales.usd)} from other agents`
+            : "agent offline"
+        }
       />
     </div>
   );

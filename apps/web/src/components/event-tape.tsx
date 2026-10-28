@@ -48,9 +48,9 @@ function events(tape: Tape | null, vault: Vault | null, taker: Taker | null): Ev
     ...(tape?.sales.recent ?? []).map((s) => ({
       at: s.at,
       tag: "SALE",
-      text: `quote to ${short(s.payer)} · ${dollars(Number(s.amount) / 1e6)}`,
+      text: `quote to ${s.ours ? "our demo buyer" : short(s.payer)} · ${dollars(Number(s.amount) / 1e6)}`,
       tx: s.txHash,
-      lit: true,
+      lit: !s.ours,
     })),
     ...(tape?.reviews ?? []).map((r) => ({
       at: r.at,

@@ -44,6 +44,7 @@ pnpm indexer # vault events, fills and Taker trades from chain into SQLite, serv
 pnpm web     # the dashboard on http://localhost:3000 (AGENT_URL and INDEXER_URL default to ports 8788 and 8789)
 pnpm --filter @naira-desk/contracts test  # the Taker contract, replaying real Textile fills on a Celo fork (needs Foundry)
 pnpm taker:take --dry-run  # the best Textile-under-Uniswap gap right now; drop --dry-run to take it
+pnpm api:buy  # pay the agent's naira API $0.005 over x402 from a demo buyer (first run creates it; shown as ours, never counted)
 ```
 
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.

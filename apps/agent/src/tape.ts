@@ -1,7 +1,7 @@
 import { AGENT_ID, IDENTITY_REGISTRY, TAKER, VAULT } from "@naira-desk/chain";
 import { PROVIDERS, type Purchase, receiptsOf } from "@naira-desk/intel";
-import { CELO_CHAIN_ID } from "@naira-desk/shared";
-import { formatEther } from "viem";
+import { CELO_CHAIN_ID, OUR_WALLETS } from "@naira-desk/shared";
+import { formatEther, isAddress, isAddressEqual } from "viem";
 import { type Decision, nextCheckAt } from "./modes.ts";
 import type { RateSample } from "./rates.ts";
 import type { Review } from "./reviews.ts";
@@ -33,6 +33,9 @@ const WEEK = 7 * 86_400_000;
 const usd = (atomic: bigint) => Number(atomic) / 1e6;
 const sum = (items: { amount: string }[]) =>
   items.reduce((total, i) => total + BigInt(i.amount), 0n);
+// Our own demo purchases are shown, but never counted as independent sales.
+const ours = (payer: string) =>
+  isAddress(payer) && OUR_WALLETS.some((wallet) => isAddressEqual(wallet, payer));
 // Checks from before errors were shortened stored whole error dumps as the reason.
 const firstLine = (reason: string) => reason.split("\n")[0] ?? reason;
 
@@ -141,7 +144,9 @@ export function buildTape({
     sales: {
       count: sales.length,
       usd: usd(sum(sales)),
-      recent: sales.slice(-100),
+      independent: sales.filter((s) => !ours(s.payer)).length,
+      independentUsd: usd(sum(sales.filter((s) => !ours(s.payer)))),
+      recent: sales.slice(-100).map((s) => ({ ...s, ours: ours(s.payer) })),
     },
     taker: takerTape(trades, trader, now),
   };
