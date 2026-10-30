@@ -145,6 +145,25 @@ describe("createTrader", () => {
     );
   });
 
+  it("tries again on the next scan when Textile still holds the last take's funds", async () => {
+    const take = vi
+      .fn(async (gap: Gap, _float: bigint, _minProfit: bigint) => ({
+        hash,
+        spent: gap.spend,
+        received: gap.poolPays,
+        gasPaid: 0n,
+      }))
+      .mockRejectedValueOnce(
+        new InsufficientFunds("/rfq/request", 10_000_000n, 10_000_000n, 9_900_000n),
+      );
+    const { trader, trades, advance } = setup({ take, float: async () => 10_000_000n });
+    await trader.tick();
+    advance(15_000);
+    await trader.tick();
+    expect(take).toHaveBeenCalledTimes(2);
+    expect(trades.map((trade) => trade.kind)).toEqual(["gap", "miss", "take"]);
+  });
+
   it("only watches when takes are off", async () => {
     const { trader, trades, take } = setup({ takes: false, float: async () => 10_000_000n });
     await trader.tick();
