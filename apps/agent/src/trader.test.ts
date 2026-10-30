@@ -2,7 +2,7 @@ import type { Hash } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import levels from "./fixtures/levels.json" with { type: "json" };
 import type { Gap, PoolQuoter } from "./gaps.ts";
-import type { Ladder } from "./rfq.ts";
+import { InsufficientFunds, type Ladder } from "./rfq.ts";
 import { createTrader, type Trade, type TraderOptions } from "./trader.ts";
 
 // Textile's wARS and CELO ladders on Celo, 26 Oct 2026. At 200 gwei a take costs $0.005521.
@@ -108,6 +108,39 @@ describe("createTrader", () => {
       expect.objectContaining({
         reason: "the firm quote doesn't pay: NoProfit",
         spend: "10000000",
+      }),
+    );
+  });
+
+  it("retries at once at what Textile says is free, instead of missing the gap", async () => {
+    const take = vi
+      .fn(async (gap: Gap, _float: bigint, _minProfit: bigint) => ({
+        hash,
+        spent: gap.spend,
+        received: gap.poolPays,
+        gasPaid: 0n,
+      }))
+      .mockRejectedValueOnce(
+        new InsufficientFunds("/rfq/request", 10_000_000n, 10_000_000n, 4_000_000n),
+      );
+    const { trader, trades } = setup({ take, float: async () => 10_000_000n });
+    await trader.tick();
+    expect(take).toHaveBeenCalledTimes(2);
+    expect(take.mock.calls[1]?.[0].spend).toBe(6_000_000n);
+    expect(trades.map((trade) => trade.kind)).toEqual(["gap", "take"]);
+  });
+
+  it("misses when even the free part of the float is under Textile's $1 minimum", async () => {
+    const take = vi.fn(async () => {
+      throw new InsufficientFunds("/rfq/request", 10_000_000n, 10_000_000n, 9_500_000n);
+    });
+    const { trader, trades } = setup({ take, float: async () => 10_000_000n });
+    await trader.tick();
+    expect(take).toHaveBeenCalledTimes(1);
+    expect(trades.at(-1)).toEqual(
+      expect.objectContaining({
+        kind: "miss",
+        reason: expect.stringContaining("committed 9500000"),
       }),
     );
   });

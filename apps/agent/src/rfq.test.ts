@@ -1,7 +1,14 @@
 import { TAKER } from "@naira-desk/chain";
 import { CNGN, USDT } from "@naira-desk/shared";
 import { describe, expect, it, vi } from "vitest";
-import { cancelQuote, reportFill, requestQuote, rfqLadders, type TakerProof } from "./rfq.ts";
+import {
+  cancelQuote,
+  InsufficientFunds,
+  reportFill,
+  requestQuote,
+  rfqLadders,
+  type TakerProof,
+} from "./rfq.ts";
 
 const answer = (status: number, body: unknown) =>
   vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body), { status }));
@@ -51,6 +58,29 @@ describe("requestQuote", () => {
         fetchFn,
       ),
     ).rejects.toThrow("textile /rfq/request: insufficient_funds");
+  });
+
+  it("keeps how much of the float Textile says is free", async () => {
+    const fetchFn = answer(400, {
+      error: {
+        details: {
+          reason: "insufficient_funds",
+          required: "21936830",
+          available: "21936830",
+          committed: "1936830",
+        },
+      },
+    });
+    const refused = await requestQuote(
+      { sellToken: USDT, buyToken: CNGN, sellAmount: 21_936_830n, taker: TAKER },
+      proof,
+      fetchFn,
+    ).catch((error) => error);
+    expect(refused).toBeInstanceOf(InsufficientFunds);
+    expect(refused.free).toBe(20_000_000n);
+    expect(refused.message).toBe(
+      "textile /rfq/request: insufficient_funds (required 21936830, available 21936830, committed 1936830)",
+    );
   });
 });
 
