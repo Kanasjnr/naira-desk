@@ -122,9 +122,16 @@ export async function takeGap(
     throw new Error(`the firm quote doesn't pay: ${briefError(error)}`);
   }
 
-  const hash = await wallet.writeContract(call);
+  // Textile holds the Taker's funds for a live quote, so one that never lands is cancelled.
+  const hash = await wallet.writeContract(call).catch(async (error) => {
+    await cancel();
+    throw error;
+  });
   const receipt = await client.waitForTransactionReceipt({ hash });
-  if (receipt.status !== "success") throw new Error(`the take reverted [${hash}]`);
+  if (receipt.status !== "success") {
+    await cancel();
+    throw new Error(`the take reverted [${hash}]`);
+  }
   await reportFill(quote.rfqId, quote.claimToken, hash, fetchFn).catch((error) =>
     console.warn(`couldn't report the fill to Textile: ${briefError(error)}`),
   );
