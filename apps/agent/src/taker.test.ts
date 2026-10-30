@@ -4,7 +4,7 @@ import { custom, hexToNumber, recoverMessageAddress, size, slice } from "viem";
 import { generatePrivateKey } from "viem/accounts";
 import { describe, expect, it, vi } from "vitest";
 import type { FirmQuote } from "./rfq.ts";
-import { poolQuoter, quoteProblem, takerProof } from "./taker.ts";
+import { poolQuoter, quoteProblem, takeGap, takerProof } from "./taker.ts";
 
 describe("takerProof", () => {
   it("signs the Taker's own text and puts the nonce and issuedAt in front", async () => {
@@ -50,6 +50,69 @@ describe("poolQuoter", () => {
     });
     const quote = poolQuoter({ readContract: vi.fn(), simulateContract } as never);
     expect(await quote(market, 6_154_188_697n)).toBe(0n);
+  });
+});
+
+describe("takeGap", () => {
+  const firmQuote = {
+    status: "quoted",
+    rfqId: "rfq_1",
+    claimToken: "claim_1",
+    quote: {
+      sellAmount: "4456053",
+      buyAmount: "6154188697",
+      takerPays: "4456053",
+      taker: TAKER,
+      reactor: REACTOR,
+      spender: REACTOR,
+      orders: [{ maker: "0xe5036100B4A32B83D5E1997d403Ce64A4C7f7324" }],
+    },
+    transactions: { swap: { to: REACTOR, data: "0x0d7a16c3" } },
+  };
+  const gap = {
+    market: { name: "cNGN", token: CNGN, fee: 100 },
+    spend: 4_456_053n,
+    bought: 6_154_188_697n,
+    poolPays: 4_500_000n,
+    profit: 43_947n,
+  } as const;
+
+  function setup(receiptStatus: "success" | "reverted", sendFails = false) {
+    const paths: string[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async (url) => {
+      const path = new URL(String(url)).pathname;
+      paths.push(path);
+      return new Response(JSON.stringify({ data: path.endsWith("/request") ? firmQuote : {} }));
+    });
+    const client = {
+      readContract: vi.fn(async () => "Textile Taker Control"),
+      simulateContract: vi.fn(async () => ({})),
+      waitForTransactionReceipt: vi.fn(async () => ({ status: receiptStatus, logs: [] })),
+    } as never;
+    const wallet = {
+      ...createTaggedWalletClient(generatePrivateKey(), custom({ request: async () => null })),
+      writeContract: vi.fn(async () => {
+        if (sendFails) throw new Error("nonce too low");
+        return `0x${"ab".repeat(32)}` as const;
+      }),
+    } as never;
+    return { paths, fetchFn, client, wallet };
+  }
+
+  it("cancels the firm quote when the take can't be sent", async () => {
+    const { paths, fetchFn, client, wallet } = setup("success", true);
+    await expect(takeGap({ client, wallet, fetchFn }, gap, 5_000_000n, 1n)).rejects.toThrow(
+      "nonce too low",
+    );
+    expect(paths).toEqual(["/v2/rfq/request", "/v2/rfq/rfq_1/cancel"]);
+  });
+
+  it("cancels the firm quote when the take reverts", async () => {
+    const { paths, fetchFn, client, wallet } = setup("reverted");
+    await expect(takeGap({ client, wallet, fetchFn }, gap, 5_000_000n, 1n)).rejects.toThrow(
+      "the take reverted",
+    );
+    expect(paths).toEqual(["/v2/rfq/request", "/v2/rfq/rfq_1/cancel"]);
   });
 });
 

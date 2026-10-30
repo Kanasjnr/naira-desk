@@ -1,6 +1,13 @@
 import { fromDataSuffix, withAttribution } from "@celo/attribution-tags";
 import { ATTRIBUTION_CODE } from "@naira-desk/shared";
-import { createWalletClient, type Hash, type Hex, type LocalAccount, type Transport } from "viem";
+import {
+  createWalletClient,
+  type Hash,
+  type Hex,
+  type LocalAccount,
+  nonceManager,
+  type Transport,
+} from "viem";
 import { privateKeyToAccount, toAccount } from "viem/accounts";
 import { celo } from "viem/chains";
 
@@ -42,15 +49,18 @@ export function requireTagOnSign(account: LocalAccount) {
 
   return toAccount({
     address: account.address,
+    nonceManager: account.nonceManager,
     signMessage: account.signMessage,
     signTypedData: account.signTypedData,
     signTransaction,
   });
 }
 
+// The trader, reviews and sale settlements send from one wallet at the same time; the nonce
+// manager hands out nonces in order instead of each send reading the same pending count.
 export function createTaggedWalletClient(privateKey: Hex, transport: Transport) {
   const client = createWalletClient({
-    account: requireTagOnSign(privateKeyToAccount(privateKey)),
+    account: requireTagOnSign(privateKeyToAccount(privateKey, { nonceManager })),
     chain: celo,
     transport,
   }).extend(withAttribution(ATTRIBUTION_CODE));
