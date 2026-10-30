@@ -12,7 +12,21 @@ Built for the **Agents on Open Rails** hackathon (Celo), targeting the Textile F
 
 ## Status
 
-The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) and has traded on Textile since 17 Oct. The agent is ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908). The Taker is live at [`0xcf02…dA57`](https://celoscan.io/address/0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57), its source verified on Sourcify.
+Live on Celo mainnet. The vault quotes on Textile and the Taker trades from the agent's float, around the clock.
+
+| | Address | What it is |
+|---|---|---|
+| Agent wallet | [`0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582`](https://celoscan.io/address/0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582) | ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908). Sends every tagged transaction: takes, vault admin, reviews, sale settlements. |
+| Taker | [`0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57`](https://celoscan.io/address/0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57) | The agent's trading contract, owned by the agent wallet. Every Textile fill and Uniswap sale runs through it. Source verified on Sourcify. |
+| Vault | [`0xD7137d85607BE18628CE00B1020895cEBceEAD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) | The community-funded Textile Operator Vault for cNGN/USD₮, administered by the agent wallet. |
+
+## Verify it in two minutes
+
+1. Open the [dashboard](https://naira-desk.vercel.app). The ticker at the top shows the desk's total volume and its tagged transactions, and refreshes every 15 seconds.
+2. In **Taker**, click any trade. It opens one Celo transaction, [like this wARS take](https://celoscan.io/tx/0xc4adc75257f1c9b41c2fa9e1382c92f9861d510f7e6c3e37c0a7bed1504f09d3), sent by the agent wallet to the Taker: the Textile maker's order fills, the tokens are sold on Uniswap, and the Taker's `Took` event shows what it paid, what the pool paid back and the profit.
+3. Scroll to the end of that transaction's input data: it ends in the attribution tag `celo_1944046be211`, like every transaction the agent sends.
+4. Ask the naira API for a rate: `curl -i https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/naira` answers `402 Payment Required` with an x402 offer of $0.005. `pnpm api:buy` pays it and prints the answer.
+5. Read the [Taker's verified source](https://celo.blockscout.com/address/0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57?tab=contract): only the agent can trade, and its money can only be withdrawn to the operator's wallet.
 
 ## How it works
 
@@ -23,15 +37,18 @@ The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/addre
 - **Naira API:** the agent sells what it learns. `GET /v1/naira` returns the onchain cNGN rate, the official and parallel rates from the posts it bought, and its current risk call with the payment receipts behind it. It costs $0.005 over x402, payable in USDC, USD₮ or USA₮ with any [buy](https://usebuy.ai) client, and the agent settles each payment onchain itself.
 - **Dashboard:** `apps/web` (Next.js, shadcn/ui) shows the onchain, official and street rates over time with the agent's careful and halted spans, the vault's value, share price and fills, the Taker's trades, profit and the gaps the agent saw, every risk check and what it decided, supplier reviews and API sales, each linked to its transaction. It reads the agent's free `/v1/tape` and the indexer.
 
-## Hackathon requirements
+## Hackathon tracks
 
-- Celo mainnet only.
-- Every transaction sent by this project carries the ERC-8021 attribution tag `celo_1944046be211`.
-- The agent registers an ERC-8004 identity from its own wallet.
+**Open Corridors: Textile FX.** Naira Desk works both sides of Textile's RFQ venue. As a maker, it runs its own Operator Vault on the cNGN/USD₮ corridor, deployed from the agent wallet, with Textile's Stitch quoting it off the agent's own price feed and Warp co-signing each fill. As a taker, the agent reads every pair's ladder from `/v2/rfq/levels`, asks for a firm quote in the Taker's name only when a maker sits under Uniswap, proves control through EIP-1271, fills and sells in one transaction, and reports the fill back to Textile.
 
-## Design
+**Build with buy.** The agent pays for its own research through buy: naira news, street-rate posts and an AI read of both, bought on a schedule and whenever the market moves. That research decides whether the vault quotes normally, carefully or not at all. Once a day it rates each supplier on their ERC-8004 identity, and it sells what it learned as its own paid API over x402.
 
-The full design, with diagrams, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+**Requirements.** Celo mainnet only. Every transaction the project sends carries the ERC-8021 attribution tag `celo_1944046be211`; the agent's wallet refuses to sign one without it. The agent registered its ERC-8004 identity from its own wallet.
+
+## Docs
+
+- [How i built it](docs/BUILD_NOTES.md): the story, the decisions, what i tried and what i dropped.
+- [Architecture](docs/ARCHITECTURE.md): the full design, with diagrams, contracts, flows and the threat model.
 
 ## Development
 

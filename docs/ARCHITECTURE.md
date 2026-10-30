@@ -10,7 +10,7 @@
 
 Naira Desk is an **onchain bureau de change for the naira**, run by an autonomous agent on Celo. Like a street BDC, it does two things: it **makes** a market, quoting both sides to anyone who asks, and it **takes** a good price when another dealer offers one.
 
-- **Making.** A community-funded Textile **Operator Vault** quotes cNGN/USD₮ at the price cNGN trades onchain. Textile's Stitch bot signs the quotes and Textile's Warp service co-signs them. Our agent feeds the price and decides, from research it buys through **buy**, when to quote, when to be careful and when to stop.
+- **Making.** A community-funded Textile **Operator Vault** quotes cNGN/USD₮ at the price cNGN trades onchain. Textile's Stitch bot signs the quotes and Textile's Warp service co-signs them. The agent feeds the price and decides, from research it buys through **buy**, when to quote, when to be careful and when to stop.
 - **Taking.** The **Taker**, a small contract the agent owns, buys from Textile makers whose quote is below the Uniswap price and sells into Uniswap in the same transaction. If the trade wouldn't make money, it reverts. It covers every Textile pair with a Uniswap pool: cNGN, wBRL, wARS and others.
 
 Everything (fills, NAV per share, Taker P&L, paid calls, tags) is indexed from chain and shown on a public dashboard.
@@ -21,9 +21,9 @@ Everything (fills, NAV per share, Taker P&L, paid calls, tags) is indexed from c
 1. Positive, verifiable strategy P&L and real filled volume on Textile, mostly from the Taker.
 2. Quoted volume and a community-funded float from the vault.
 3. Runs unattended and fails safe: a Taker trade makes money or doesn't happen, and the vault stops quoting when its price can't be trusted.
-4. Every transaction we send is tagged, including every Taker fill. The ERC-8004 identity links the agent, vault, Taker and repo.
+4. Every transaction the desk sends is tagged, including every Taker fill. The ERC-8004 identity links the agent, vault, Taker and repo.
 
-**Non-goals (for this hackathon):** our own RFQ maker protocol, fiat ramps, a MiniPay listing, holding positions (every Taker trade ends in USD₮).
+**Non-goals (for this hackathon):** a custom RFQ maker protocol, fiat ramps, a MiniPay listing, holding positions (every Taker trade ends in USD₮).
 
 ---
 
@@ -31,16 +31,16 @@ Everything (fills, NAV per share, Taker P&L, paid calls, tags) is indexed from c
 
 | # | Finding | Status | Design consequence |
 |---|---|---|---|
-| 1 | `OperatorVaultFactory.deployVault` only checks `msg.sender == init.operatorAdmin`. Deposits have no allowlist. | ✅ factory and vault source, Blockscout-verified | We can deploy our own vault, and community LPs can fund it directly. |
-| 2 | Every vault fill needs **two EOA signatures** (strategy and risk) over the Permit2 digest, plus order-policy checks: reactor, swapper = vault, trading epoch in the nonce, lifetime cap, per-order caps, quotable inventory, close-only, preferred fillers. | ✅ `VaultPolicy.validateEnvelope` | The contract enforces safety, not our code. |
-| 3 | Stitch docs: the **venue supplies "Warp" co-signing**. Both existing Celo vaults use the same `riskSigner` `0x9bC2…32a3` and `riskAdmin` `0x5172…bA4`. | ✅ docs, onchain, and confirmed by the Textile team | **Risk signer = Textile Warp, not our own agent.** Our risk logic sits before signing (pricer, risk officer). |
-| 4 | Stitch already has **vault modules**: inventory balancing, dynamic spreads, spot rebalancing. It also co-signs NAV attestations. | ✅ `docs/modules.md` | We don't rebuild quoting maths. |
-| 5 | Stitch prices off an HTTP feed `{price, timestamp}`, where price is USD₮ per cNGN. Stale or invalid prices stop quoting. | ✅ README and ADVANCED.md | The **feed is our control surface**: price in, and a halt is a 503 response. |
+| 1 | `OperatorVaultFactory.deployVault` only checks `msg.sender == init.operatorAdmin`. Deposits have no allowlist. | ✅ factory and vault source, Blockscout-verified | Naira Desk can deploy its own vault, and community LPs can fund it directly. |
+| 2 | Every vault fill needs **two EOA signatures** (strategy and risk) over the Permit2 digest, plus order-policy checks: reactor, swapper = vault, trading epoch in the nonce, lifetime cap, per-order caps, quotable inventory, close-only, preferred fillers. | ✅ `VaultPolicy.validateEnvelope` | The contract enforces safety, not the agent's code. |
+| 3 | Stitch docs: the **venue supplies "Warp" co-signing**. Both existing Celo vaults use the same `riskSigner` `0x9bC2…32a3` and `riskAdmin` `0x5172…bA4`. | ✅ docs, onchain, and confirmed by the Textile team | **Risk signer = Textile Warp, not the agent.** The desk's risk logic sits before signing (pricer, risk officer). |
+| 4 | Stitch already has **vault modules**: inventory balancing, dynamic spreads, spot rebalancing. It also co-signs NAV attestations. | ✅ `docs/modules.md` | No quoting maths to rebuild. |
+| 5 | Stitch prices off an HTTP feed `{price, timestamp}`, where price is USD₮ per cNGN. Stale or invalid prices stop quoting. | ✅ README and ADVANCED.md | The **feed is the control surface**: price in, and a halt is a 503 response. |
 | 6 | The vault pre-approves Permit2 in its constructor. | ✅ `OperatorVault` constructor | No approval transactions are needed for vault trading. |
 | 7 | Onchain, a fill is `Fill(orderHash, filler = taker, swapper = maker)`. | ✅ decoded reactor logs | Vault fills have `swapper = vault`; Taker fills have `filler = Taker`. Indexing is simple. |
 | 8 | Celo Textile, 13 Oct: **136 fills, 13 distinct takers, 5 makers. One maker did about 75%.** | ✅ RPC log scan | Real flow, but concentrated. |
 | 9 | Uniswap V3 on Celo has 0.01% pools for cNGN, wBRL and wARS against USD₮. | ✅ factory `getPool` | The onchain price for the vault and the exit for the Taker. |
-| 10 | Textile's deploy-page defaults: 5-minute epochs, 1-day redemption cooldown, 1-day valuation timeout, 2-day emergency exit, 10% of each fee to Textile, idle USD₮ lent on Aave. | ✅ deploy page and decoded `deployVault` calls | We keep the roles and timings and set our own fees, caps and minimums (section 6.2). |
+| 10 | Textile's deploy-page defaults: 5-minute epochs, 1-day redemption cooldown, 1-day valuation timeout, 2-day emergency exit, 10% of each fee to Textile, idle USD₮ lent on Aave. | ✅ deploy page and decoded `deployVault` calls | Keep the roles and timings and set custom fees, caps and minimums (section 6.2). |
 | 11 | Textile Ramp (NGN bank) is BSC/Base only. | ✅ live API | No fiat. LPs deposit USD₮ or cNGN already on Celo. |
 
 ### 1.1 Market review, 24–26 Oct
@@ -48,7 +48,7 @@ Everything (fills, NAV per share, Taker P&L, paid calls, tags) is indexed from c
 | # | Finding | Status | Design consequence |
 |---|---|---|---|
 | 12 | The Uniswap cNGN/USD₮ pool sits near ₦1,367.6 per USD₮ while the off-chain naira (Luno, Textile makers) is ₦1,376–1,382. From 21 to 24 Oct, all 44 cNGN fills on Textile (about $4,350) were takers buying cNGN. None sold. | ✅ pool reads, Luno, reactor logs | The flow is arbitrage. A maker that fills it loses about 0.9%, so the vault prices at the pool (7.5) and fills rarely. |
-| 13 | Another entrant's bot took these gaps with its own money: $21,968 filled and $196.80 profit in about 6 hours, mostly wBRL in one hour while a maker priced 2.7% under Uniswap. It trades in two transactions, and once it was left holding wBRL when the second one failed. | ✅ its public trade log and onchain txs | Taking pays. One transaction per trade removes the risk of being left holding a token. |
+| 13 | A take in two transactions, buy on Textile then sell on Uniswap, is left holding the token whenever the second one fails or the pool moves in between. | ✅ reactor and pool mechanics | One transaction per trade removes the risk of being left holding a token. |
 | 14 | The reactor is UniswapX's `LimitOrderReactor`. Textile orders carry `PreferredFillerValidation`: only the taker named in the quote can fill before the order deadline. | ✅ Blockscout-verified source, decoded orders | The Taker contract must be the named taker. |
 | 15 | `POST /v2/rfq/request` binds a firm quote to `taker`, proven by an EIP-712 `TakerControl` signature. Contract takers are verified through EIP-1271. The taker must already hold what it sells (`insufficient_funds`). | ✅ `api.textilecredit.com/v2/openapi.json` | The Taker answers EIP-1271 with the agent key, using Textile's `eip191` text, and holds a USD₮ float. No flash fills: a trade is at most the float. |
 | 16 | `GET /v2/rfq/levels` returns every pair's ladder (depth and indicative prices, fee included) in one call, cached about 2s. Nothing is reserved. | ✅ OpenAPI and a live call | The agent scans every pair every few seconds for free and only asks for a firm quote when there's a gap. |
@@ -65,7 +65,7 @@ flowchart LR
     TK["Takers: Textile app/API users, aggregators"]
     JD["Judges"]
   end
-  subgraph OURS["Naira Desk: our code"]
+  subgraph OURS["Naira Desk code"]
     WEB["Dashboard"]
     AG["Agent: pricer, risk officer, trader, reviewer, naira API"]
     IDX["Indexer"]
@@ -116,11 +116,11 @@ flowchart LR
 
 | Agent | Runs where | Decides | Can never |
 |---|---|---|---|
-| **Pricer** | our agent | cNGN's price where it trades onchain (Uniswap TWAP), checked against the off-chain naira (Luno, Textile). | Sign anything. Move funds. |
-| **Risk officer** | our agent | Mode (normal, caution, halted) from news and street-rate posts it buys through buy, price jumps and peg drift. | Spend past the buy budget. |
+| **Pricer** | the agent | cNGN's price where it trades onchain (Uniswap TWAP), checked against the off-chain naira (Luno, Textile). | Sign anything. Move funds. |
+| **Risk officer** | the agent | Mode (normal, caution, halted) from news and street-rate posts it buys through buy, price jumps and peg drift. | Spend past the buy budget. |
 | **Executor** | **Stitch** (Textile code, its own strategy key S) | Vault quote size and side within the vault caps, inventory balancing, spread. | Sign without a fresh feed. Fill without Warp's co-sign. |
-| **Trader** | our agent | Which Textile quote the Taker takes, how big, and the minimum profit. | Hold a position: every take ends in USD₮ or reverts. Take from our own vault. |
-| **Reviewer** | our agent | Once a day, an ERC-8004 rating for each service it paid. | Rate itself. |
+| **Trader** | the agent | Which Textile quote the Taker takes, how big, and the minimum profit. | Hold a position: every take ends in USD₮ or reverts. Take from the desk's own vault. |
+| **Reviewer** | the agent | Once a day, an ERC-8004 rating for each service it paid. | Rate itself. |
 
 ### 3.2 Keys and roles
 
@@ -146,7 +146,7 @@ flowchart TB
 
 Vault rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` ✅.
 
-**Why Stitch has its own key:** the vault lets the strategy signer close redemption epochs, so Stitch sends its own transactions, and we can't tag those. Keeping them off A keeps every transaction from the agent wallet tagged.
+**Why Stitch has its own key:** the vault lets the strategy signer close redemption epochs, so Stitch sends its own transactions, and those can't carry the tag. Keeping them off A keeps every transaction from the agent wallet tagged.
 
 **Why A can trade but can't take the money:** A is a hot key, so the Taker is built so that even A can't move its funds anywhere but the operator's wallet. `take` can't lower its USD₮, `withdraw` only pays the operator's wallet, and `isValidSignature` only vouches for Textile's taker-control text for this contract. That last part matters because Celo's USD₮ also asks a contract holder's `isValidSignature` before honouring a `permit` or `transferWithAuthorization`, so a contract that vouched for anything A signed could be emptied with a signature.
 
@@ -174,7 +174,7 @@ Vault rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` �
 ```mermaid
 flowchart LR
   subgraph NF["Northflank, always on"]
-    subgraph DESK["service naira-desk: our Dockerfile"]
+    subgraph DESK["service naira-desk: the repo's Dockerfile"]
       AGT["agent"]
       IDXR["indexer"]
       DB[("volume /data: JSONL logs + SQLite")]
@@ -196,7 +196,7 @@ flowchart LR
   WEB -->|read-only HTTP| IDXR
 ```
 
-Since 30 Oct nothing runs on the operator's laptop. Two always-on services on Northflank's free plan: `naira-desk` runs the agent and indexer from our `Dockerfile` with a volume for their data, and `stitch` runs Textile's published Stitch image with the vault bot's config. Stitch reads the agent's feed at its public HTTPS address, since it refuses plain HTTP off localhost. The dashboard is on Vercel at [naira-desk.vercel.app](https://naira-desk.vercel.app), with its project root at `apps/web`. Merges to `main` redeploy the desk and the dashboard. Keys are runtime secrets: the agent's key is written once to the volume, and Stitch's entrypoint writes its signer key and maker credential to owner-only files and drops them from the environment. The Taker only earns while the agent runs, and the biggest gap so far opened around midnight in Lagos, which is why none of this depends on a laptop.
+Since 30 Oct nothing runs on the operator's laptop. Two always-on services on Northflank's free plan: `naira-desk` runs the agent and indexer from the repo's `Dockerfile` with a volume for their data, and `stitch` runs Textile's published Stitch image with the vault bot's config. Stitch reads the agent's feed at its public HTTPS address, since it refuses plain HTTP off localhost. The dashboard is on Vercel at [naira-desk.vercel.app](https://naira-desk.vercel.app), with its project root at `apps/web`. Merges to `main` redeploy the desk and the dashboard. Keys are runtime secrets: the agent's key is written once to the volume, and Stitch's entrypoint writes its signer key and maker credential to owner-only files and drops them from the environment. The Taker only earns while the agent runs, and the biggest gap so far opened around midnight in Lagos, which is why none of this depends on a laptop.
 
 ---
 
@@ -206,8 +206,9 @@ Since 30 Oct nothing runs on the operator's laptop. Two always-on services on No
 
 | Contract | Address | Status |
 |---|---|---|
+| Agent wallet A (ERC-8004 #9908) | `0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582` | ✅ owns the Taker, administers the vault |
 | Naira Desk Vault | `0xD7137d85607BE18628CE00B1020895cEBceEAD6C` | ✅ deployed 14 Oct |
-| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, Sourcify exact match |
+| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, owner A, Sourcify exact match |
 | OperatorVaultFactory | `0x88104decA449C797632AfdcA77A3140b24cD844A` | ✅ |
 | LimitOrderReactor | `0xa9AA0a64769cBed4d3B1Ceb4Df01CdE915C235b3` | ✅ |
 | PreferredFillerValidation | `0x10B9EbA3a175Df418a35CB8329a527691EE258C5` | ✅ |
@@ -230,7 +231,7 @@ Since 30 Oct nothing runs on the operator's laptop. Two always-on services on No
 
 ### 6.2 Vault parameters (`VaultInit`)
 
-`pnpm vault:deploy` kept Textile's presets for roles and timings and set our own fees, caps and minimums. The values live in `packages/chain/src/vault.ts`. Everything except the roles, fee recipient and liquid floor is fixed.
+`pnpm vault:deploy` kept Textile's presets for roles and timings and set custom fees, caps and minimums. The values live in `packages/chain/src/vault.ts`. Everything except the roles, fee recipient and liquid floor is fixed.
 
 | Field | Value | Why |
 |---|---|---|
@@ -275,7 +276,7 @@ The owner, beneficiary, reactor, USD₮ and router are immutable. No upgrades, n
 sequenceDiagram
   autonumber
   actor Y as Operator
-  participant SC as Our scripts (tagged)
+  participant SC as Desk scripts (tagged)
   participant ID as ERC-8004 Registry
   participant FAC as Vault factory
   participant V as Vault
@@ -339,7 +340,7 @@ sequenceDiagram
   end
   TR->>X: POST /v2/rfq/request (taker = Taker, TakerControl proof signed by A)
   X-->>TR: firm quote signed by maker M, fillable only by the Taker
-  TR->>TR: skip if M is our vault, then simulate take
+  TR->>TR: skip if M is the desk's vault, then simulate take
   TR->>K: take(swap calldata, token, fee, minProfit), tagged
   K->>R: executeBatch(M's order)
   R->>R: check M's signature and preferred filler = Taker
@@ -351,7 +352,7 @@ sequenceDiagram
   TR->>X: POST /v2/rfq/{id}/submit (txHash)
 ```
 
-A firm quote holds the maker's liquidity until its deadline, even if cancelled, so the trader only asks when it means to trade. A lost race (another bot drained the pool first) reverts and costs only gas.
+A firm quote holds the maker's liquidity until its deadline, even if cancelled, so the trader only asks when it means to trade. A lost race (the pool moved before the take landed) reverts and costs only gas.
 
 **Worked example** (26 Oct, a real cNGN order): the maker sells ₦6,154.19 for 4.4556 USD₮ (₦1,381.2). The pool pays 4.4994 USD₮ for it after its 0.01% fee. Less Textile's 0.01% fee and about $0.006 of gas, about **$0.037** is left.
 
@@ -430,7 +431,7 @@ flowchart LR
 
 **LP.** Reads the vault card on the dashboard, deposits 5 USD₮ or ₦7,000 cNGN, claims shares after the epoch, follows the share price, and redeems for USD₮ plus cNGN. Before depositing they see: you can lose money if the naira moves against the vault; exits are in kind; the operator can't withdraw your funds.
 
-**Taker.** Nothing new: they use the Textile app or API, and our vault is one of the makers that may quote.
+**Taker.** Nothing new: they use the Textile app or API, and the desk's vault is one of the makers that may quote.
 
 **Operator.** Merges releases to `main`, which redeploys the desk and the dashboard; funds the Taker's float and the agent's gas; and withdraws profits from their own wallet. Locally, `pnpm agent`, `pnpm indexer` and `pnpm web` run the same stack for development, never alongside the hosted agent, since both would trade with the same key.
 
@@ -444,11 +445,11 @@ flowchart LR
 |---|---|---|---|
 | `register`, `setAgentURI` (ERC-8004) | A | ✅ | `packages/chain` tagged client |
 | `deployVault`, `setStrategySigner` | A | ✅ | same |
-| Taker deploy, `take`, `withdraw` | A | ✅ | same. Every Taker fill happens inside our tagged transaction |
+| Taker deploy, `take`, `withdraw` | A | ✅ | same. Every Taker fill happens inside a tagged transaction from A |
 | `giveFeedback` (supplier reviews) | A | ✅ | same |
 | Naira API settlements (`transferWithAuthorization`) | A | ✅ | same |
-| Vault fills (`executeBatch`) | takers | ❌ not ours | Counted through `Fill.swapper = vault`. ✅ Textile confirmed these count as our volume and P&L |
-| Epoch closes, NAV settlement | Stitch (S), Warp | ❌ not ours | S isn't A, so A stays fully tagged |
+| Vault fills (`executeBatch`) | takers | ❌ sent by takers | Counted through `Fill.swapper = vault`. ✅ Textile confirmed these count as the desk's volume and P&L |
+| Epoch closes, NAV settlement | Stitch (S), Warp | ❌ sent by takers | S isn't A, so A stays fully tagged |
 | LP deposits | LP wallets | ❌ unless their wallet adds the suffix | |
 | buy settlements | buy's facilitator | ❌ | Payer is A |
 
@@ -466,11 +467,11 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo, t
 - Vault: change in NAV per share, after fees.
 - Taker: sum of `received − spent` over `Took` events, minus gas.
 - Strategy: vault + Taker, minus buy spend.
-- Our own wallets (agent, operator, Stitch) never count as independent volume or LPs.
+- The desk's own wallets (agent, operator, Stitch) never count as independent volume or LPs.
 
 ---
 
-## 11. APIs we expose
+## 11. Exposed APIs
 
 | Endpoint | Consumer | Response |
 |---|---|---|
@@ -489,12 +490,12 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo, t
 | Agent key A leaks | Owner actions on the vault; trading with the Taker | Can't move LP assets ✅. Can't move the Taker's funds either: they only go to the operator's wallet, and the Taker won't vouch for a USD₮ permit or transfer authorization. Move ownership to a Safe once real money is involved. |
 | Bug in the Taker | Float lost | Small and immutable, owner-only entry points. Fork tests replay real cNGN and wBRL fills and cover lost races, expired and used quotes, wrong tokens and pools, short balances and signature replay. Float stays small. |
 | A signature moving the Taker's USD₮ | Celo's USD₮ honours `permit` and `transferWithAuthorization` for a contract holder that vouches for them | The Taker only vouches for Textile's taker-control text. A fork test shows a contract that vouches for anything is emptied, and the Taker isn't, even with A's own signature. |
-| Another bot drains the pool first | The take reverts | Costs gas only, under a cent |
+| The pool moves before the take lands | The take reverts | Costs gas only, under a cent |
 | Someone sends the reactor 1 wei of CELO | Every take reverts on the refund | The Taker accepts native CELO |
 | Bad or stale price source | Mispriced vault quotes | Pool TWAP, peg check against Luno and Textile, Stitch rejects stale feeds ✅ |
 | Naira shock or arbitrage wave | LP losses | Quoting at the pool, paid news checks, per-order caps |
 | Machine down | No quotes, no takes | Fails safe. LPs can still redeem; forced in-kind exit after 48h ✅ |
-| Self-dealing optics | Disqualification risk | The Taker never fills our vault. Our wallets are published and excluded from independent metrics. |
+| Self-dealing optics | Disqualification risk | The Taker never fills the desk's vault. The desk's wallets are published and excluded from independent metrics. |
 | Regulatory (pooling public money) | Legal risk | Small caps, clear risk card, no promised yield |
 
 **Key handling:** key A is a file with `chmod 600`, never in the repo or chat. Stitch generates and keeps key S. The operator wallet stays on a phone and only receives fees and profits.
@@ -549,8 +550,8 @@ gantt
 **Confirmed with the Textile team:**
 - ✅ The maker key is self-serve through the Stitch wizard.
 - ✅ Self-deployed vaults are included in RFQ requests.
-- ✅ Warp co-signs fills for our vault, and Stitch and Textile handle epochs and NAV attestations.
-- ✅ Fills where our vault is the maker count as our volume and P&L for the Textile track.
+- ✅ Warp co-signs fills for the desk's vault, and Stitch and Textile handle epochs and NAV attestations.
+- ✅ Fills where the desk's vault is the maker count as the desk's volume and P&L for the Textile track.
 
 **From Textile's published API (26 Oct):**
 - ✅ Contract takers are supported through EIP-1271.
@@ -568,5 +569,5 @@ gantt
 
 - Buying on Uniswap and selling on Textile. Textile checks the taker holds the token it sells, so the Taker would need a float in every token.
 - Flash fills with no float, for the same reason.
-- Fiat on/off-ramp, MiniPay mini-app, our own risk co-signer.
+- Fiat on/off-ramp, MiniPay mini-app, a custom risk co-signer.
 - wARS and wBRL vaults.
