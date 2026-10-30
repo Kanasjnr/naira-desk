@@ -2,6 +2,8 @@
 
 An onchain bureau de change for the naira.
 
+**Live dashboard: [naira-desk.vercel.app](https://naira-desk.vercel.app)**. The agent and indexer run around the clock on Northflank, and every number on the dashboard links to its Celo transaction. Raw data: [activity log](https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/tape), [Taker trades](https://p03--naira-desk--dtp6fbr6m2jg.code.run/api/taker), [Stitch's price feed](https://p01--naira-desk--dtp6fbr6m2jg.code.run/feed/cngn-usdt).
+
 Naira Desk trades cNGN, a naira stablecoin, onchain. Like a street BDC, it makes a market, quoting both sides to anyone who asks, and it takes a good price when another dealer offers one. Unlike one, it's run by an autonomous agent, trades around the clock on Celo and publishes every trade.
 
 Under the hood, Naira Desk runs a community-funded [Textile FX](https://app.textilecredit.com) Operator Vault for the cNGN/USD₮ corridor, and a small contract that buys mispriced quotes on Textile and sells them on Uniswap in one transaction. The agent prices the naira, reads market news through paid [buy](https://usebuy.ai) calls, and decides when the vault quotes, when it's careful and when it stops. Every fill, the vault's NAV per share, the contract's trades and the agent's paid calls are published so anyone can verify them onchain.
@@ -55,7 +57,7 @@ The `Dockerfile` runs the agent and the indexer in one container. Give it a volu
 - `API_URL`: the public address of port 8788, so x402 payment requests name the right resource.
 - `NAIRA_DESK_SEED` (optional): logs from another machine, `COPYFILE_DISABLE=1 tar czf - -C ~/.naira-desk $(cd ~/.naira-desk && ls *.jsonl) | base64`, unpacked once on first start.
 
-The dashboard deploys separately (Vercel works), with `AGENT_URL` and `INDEXER_URL` pointing at ports 8788 and 8789.
+The live desk runs this container on [Northflank](https://northflank.com) with a volume at `/data`. The dashboard is on Vercel, with the project root at `apps/web` and `AGENT_URL` and `INDEXER_URL` pointing at the container's ports 8788 and 8789. Both redeploy on every merge to `main`.
 
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
 
