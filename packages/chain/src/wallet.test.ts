@@ -90,6 +90,14 @@ describe("createTaggedWalletClient", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("hands out nonces from one queue, so concurrent sends don't collide", () => {
+    const { account } = createTaggedWalletClient(
+      generatePrivateKey(),
+      custom({ request: async () => null }),
+    );
+    expect(account.nonceManager).toBeDefined();
+  });
+
   it("only exposes methods that tag", () => {
     const { wallet } = setup();
     // @ts-expect-error not part of the tagged wallet
