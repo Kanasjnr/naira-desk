@@ -8,7 +8,6 @@ import type { Took } from "./taker.ts";
 const WATCH = 100_000_000n;
 // Textile's smallest firm quote.
 const MIN_TAKE = 1_000_000n;
-const SLICES = 2n;
 // CELO the agent keeps for its reviews rather than spending on takes.
 const MIN_GAS = 10n ** 17n;
 const SIGHTING_EVERY = 5 * 60_000;
@@ -102,9 +101,6 @@ export function createTrader({
           : null;
     status = { at: now(), float: held, celo, idle };
     const canTake = idle === null;
-    // Textile holds a filled quote's funds for about a minute, so each take uses half the float
-    // and the other half stays free for the next gap. Below two minimum takes it uses all of it.
-    const slice = held >= SLICES * MIN_TAKE ? held / SLICES : held;
 
     let best: { gap: Gap; ladder: Ladder } | undefined;
     for (const market of MARKETS) {
@@ -119,7 +115,7 @@ export function createTrader({
       if (!seen || seen.profit <= gas) continue;
       await sighting(seen, gas);
       if (!canTake || now() - (lastMiss.get(market.name) ?? 0) < MISS_PAUSE) continue;
-      const mine = slice === budget ? seen : await bestGap(market, ladder, slice, poolPays);
+      const mine = held === budget ? seen : await bestGap(market, ladder, held, poolPays);
       if (mine && mine.profit > gas && (!best || mine.profit > best.gap.profit)) {
         best = { gap: mine, ladder };
       }
