@@ -33,16 +33,49 @@ export type FirmQuote =
     }
   | { status: "no_quote"; reason?: string };
 
+// Textile checks the taker holds the sell token, less what its other live quotes have reserved.
+export class InsufficientFunds extends Error {
+  readonly required: bigint;
+  readonly available: bigint;
+  readonly committed: bigint;
+
+  constructor(route: string, required: bigint, available: bigint, committed: bigint) {
+    super(
+      `textile ${route}: insufficient_funds (required ${required}, available ${available}, committed ${committed})`,
+    );
+    this.required = required;
+    this.available = available;
+    this.committed = committed;
+  }
+
+  get free() {
+    return this.available > this.committed ? this.available - this.committed : 0n;
+  }
+}
+
+type Details = { reason?: string; required?: string; available?: string; committed?: string };
+
 async function call<T>(fetchFn: typeof fetch, path: string, init?: RequestInit): Promise<T> {
   // Firm quotes can wait up to ~70s for makers on a cold corridor.
   const response = await fetchFn(`${API}${path}`, { ...init, signal: AbortSignal.timeout(75_000) });
   const body = (await response.json().catch(() => ({}))) as {
     data?: T;
-    error?: { message?: string; details?: { reason?: string } };
+    error?: { message?: string; details?: Details };
   };
   if (!response.ok || !body.data) {
-    const reason = body.error?.details?.reason ?? body.error?.message ?? response.status;
-    throw new Error(`textile ${path.split("?")[0]}: ${reason}`);
+    const route = path.split("?")[0] ?? path;
+    const details = body.error?.details;
+    if (details?.reason === "insufficient_funds") {
+      throw new InsufficientFunds(
+        route,
+        BigInt(details.required ?? 0),
+        BigInt(details.available ?? 0),
+        BigInt(details.committed ?? 0),
+      );
+    }
+    throw new Error(
+      `textile ${route}: ${details?.reason ?? body.error?.message ?? response.status}`,
+    );
   }
   return body.data;
 }
