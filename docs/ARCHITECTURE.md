@@ -159,7 +159,7 @@ Vault rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` �
 | Component | Stack | Responsibility |
 |---|---|---|
 | `apps/agent` | Node 24, TypeScript, viem, Hono | Pricer, risk officer, trader, reviewer. Serves `/feed/cngn-usdt` to Stitch, the paid `/v1/naira` API and the free `/v1/tape`. |
-| `apps/indexer` | viem `getLogs`, `node:sqlite` | Vault events, reactor fills where the vault is the maker, Taker trades. Serves `/api/summary`, `/api/fills`, `/api/nav`. |
+| `apps/indexer` | viem `getLogs`, `node:sqlite` | Vault events, reactor fills where the vault is the maker, Taker trades. Serves `/api/summary`, `/api/fills`, `/api/nav`, `/api/taker`. |
 | `apps/web` | Next.js, shadcn/ui, Recharts | The dashboard: rates, vault, Taker, decisions, reviews and sales, each linked to its transaction. |
 | `packages/contracts` | Solidity, Foundry | `Taker.sol` and its tests, including a mainnet-fork replay of a real Textile order. |
 | `packages/chain` | viem | The only place wallet clients are created, always tagged. ABIs and addresses. |
@@ -417,7 +417,7 @@ flowchart LR
   VE["Vault events"] --> IX
   TK["Taker Took events"] --> IX
   IX --> DB[("SQLite")]
-  DB --> API["/api/summary, /api/fills, /api/nav"]
+  DB --> API["/api/summary, /api/fills, /api/nav, /api/taker"]
   TAPE["Agent /v1/tape: decisions, rates, purchases, reviews, sales"] --> WEB["Dashboard"]
   API --> WEB
 ```
@@ -456,7 +456,7 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo, t
 
 ## 10. Data model
 
-**Indexer (SQLite):** `cursor` (last block), `vault_events` (block, log index, tx, time, name, args), `fills` (vault fills: block, log index, tx, time, order hash, filler, sender, side, USD₮, cNGN), and `taker_trades` (block, log index, tx, time, token, spent, received).
+**Indexer (SQLite):** `cursor` (last block), `vault_events` (block, log index, tx, time, name, args), `fills` (vault fills: block, log index, tx, time, order hash, filler, sender, side, USD₮, cNGN), and `taker_trades` (block, log index, tx, time, token, amount bought, USD₮ spent and received, gas paid), with its own `taker_cursor` since the Taker was deployed after the vault.
 
 **Agent (JSONL in `~/.naira-desk`):** `decisions`, `purchases`, `rates`, `reviews`, `sales`, and `trades`: every gap the trader sees (at most every 5 minutes per market, sized as if the Taker held $100), every take, and every miss with its reason.
 
@@ -475,7 +475,7 @@ The agent card (onchain as a data URI, from `agent-card.json`) links the repo, t
 | `GET /feed/cngn-usdt` (port 8787) | Stitch | `{ "price": 0.000731, "timestamp": 1760000000 }`, or **503** when halted |
 | `GET /v1/naira` (port 8788) | other agents, $0.005 over x402 | onchain rate, official and parallel rates, the current risk call and its receipts |
 | `GET /v1/tape` (port 8788) | dashboard | decisions, rates, purchases, reviews, sales |
-| `GET /api/summary`, `/api/fills`, `/api/nav` (port 8789) | dashboard | vault and Taker metrics from the indexer |
+| `GET /api/summary`, `/api/fills`, `/api/nav`, `/api/taker` (port 8789) | dashboard | vault and Taker metrics from the indexer |
 
 ---
 

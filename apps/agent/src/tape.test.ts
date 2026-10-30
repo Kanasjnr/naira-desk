@@ -52,6 +52,34 @@ describe("buildTape", () => {
       { at: 0, ngnPerUsdt: 1361 },
       { at: 28 * HOUR, ngnPerUsdt: 1365 },
     ],
+    trades: [
+      { at: HOUR, kind: "gap", market: "wARS", spend: "29433115", profit: "565000", gas: "6682" },
+      {
+        at: 27 * HOUR,
+        kind: "gap",
+        market: "cNGN",
+        spend: "14741497",
+        profit: "44013",
+        gas: "6682",
+      },
+      {
+        at: 27 * HOUR,
+        kind: "take",
+        market: "cNGN",
+        spent: "1800000",
+        received: "1805659",
+        gasPaid: "55929285000000000",
+        txHash: "0xtake",
+      },
+      {
+        at: 28 * HOUR,
+        kind: "miss",
+        market: "wARS",
+        spend: "1936830",
+        reason: "textile /rfq/request: insufficient_funds\nmore detail",
+      },
+    ],
+    trader: { at: 28 * HOUR, float: 1_830_000n, celo: 68n * 10n ** 16n, idle: null },
     wallet: "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
     now: 28 * HOUR,
   });
@@ -85,11 +113,64 @@ describe("buildTape", () => {
       reviews: [],
       sales: [],
       rates: [],
+      trades: [],
+      trader: null,
       wallet: "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
       now: HOUR,
     });
     expect(old.decisions[0]?.reason).toBe("couldn't check: HTTP request failed.");
     expect(old.current?.reason).toBe("couldn't check: HTTP request failed.");
+    expect(old.taker).toMatchObject({ status: null, gaps: [], misses: [], seen: { count: 0 } });
+  });
+
+  it("shows our demo buyer's purchases without counting them as sales", () => {
+    const demo = buildTape({
+      decisions: [],
+      purchases: [],
+      reviews: [],
+      sales: [
+        {
+          at: HOUR,
+          txHash: "0xdemo",
+          payer: "0x48fe78C8e5Cb3f2Ff22bffD5db987B16F560574F",
+          asset: USDT,
+          amount: "5000",
+        },
+      ],
+      rates: [],
+      trades: [],
+      trader: null,
+      wallet: "0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582",
+      now: HOUR,
+    });
+    expect(demo.sales).toMatchObject({ count: 1, independent: 0, independentUsd: 0 });
+    expect(demo.sales.recent[0]?.ours).toBe(true);
+  });
+
+  it("shows the gaps the trader saw, its misses and what it can trade with", () => {
+    expect(tape.taker).toEqual({
+      address: "0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57",
+      status: { at: 28 * HOUR, floatUsd: 1.83, gasCelo: 0.68, idle: null },
+      seen: { count: 2, last24h: 1, takes: 1, misses: 1 },
+      gaps: [
+        { at: HOUR, market: "wARS", spendUsd: 29.433115, profitUsd: 0.565, gasUsd: 0.006682 },
+        {
+          at: 27 * HOUR,
+          market: "cNGN",
+          spendUsd: 14.741497,
+          profitUsd: 0.044013,
+          gasUsd: 0.006682,
+        },
+      ],
+      misses: [
+        {
+          at: 28 * HOUR,
+          market: "wARS",
+          spendUsd: 1.93683,
+          reason: "textile /rfq/request: insufficient_funds",
+        },
+      ],
+    });
   });
 
   it("keeps every decision's receipts, including ones logged the old way", () => {
@@ -107,7 +188,7 @@ describe("buildTape", () => {
         "cencori.v1.chat.completions": { calls: 1, usd: 0.01 },
       },
     });
-    expect(tape.sales).toMatchObject({ count: 1, usd: 0.005 });
+    expect(tape.sales).toMatchObject({ count: 1, usd: 0.005, independent: 1 });
     expect(tape.agent).toMatchObject({
       agentId: 9908,
       vault: "0xD7137d85607BE18628CE00B1020895cEBceEAD6C",

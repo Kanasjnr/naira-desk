@@ -19,7 +19,7 @@ The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/addre
 - **Execution:** the agent's wallet owns the vault. Textile's Stitch bot answers RFQs with its own key as the vault's strategy signer, and Textile's Warp service co-signs every fill.
 - **Agent:** prices cNGN where it trades onchain, checks it still tracks the naira on Luno and Textile, and watches for sharp moves. On a schedule, and whenever the price jumps or cNGN drifts from the naira, it pays through [buy](https://usebuy.ai) for recent naira news, street-rate posts and an AI read of both. It checks the onchain price against the official and parallel rates people are quoting, then quotes normally, carefully, or stops quoting for at least two hours. Every decision is logged with its payment receipts, and once a day the agent rates each service it paid on their ERC-8004 identities, scored on how many paid calls delivered.
 - **Naira API:** the agent sells what it learns. `GET /v1/naira` returns the onchain cNGN rate, the official and parallel rates from the posts it bought, and its current risk call with the payment receipts behind it. It costs $0.005 over x402, payable in USDC, USD₮ or USA₮ with any [buy](https://usebuy.ai) client, and the agent settles each payment onchain itself.
-- **Dashboard:** `apps/web` (Next.js, shadcn/ui) shows the onchain, official and street rates over time with the agent's careful and halted spans, the vault's value, share price and fills, every risk check and what it decided, supplier reviews and API sales, each linked to its transaction. It reads the agent's free `/v1/tape` and the indexer.
+- **Dashboard:** `apps/web` (Next.js, shadcn/ui) shows the onchain, official and street rates over time with the agent's careful and halted spans, the vault's value, share price and fills, the Taker's trades, profit and the gaps the agent saw, every risk check and what it decided, supplier reviews and API sales, each linked to its transaction. It reads the agent's free `/v1/tape` and the indexer.
 
 ## Hackathon requirements
 
@@ -40,11 +40,22 @@ pnpm install
 pnpm check   # lint, typecheck and tests
 pnpm fix     # apply formatting and safe lint fixes
 pnpm agent   # the agent: price feed for Stitch, risk desk, naira API, trader (TAKES=off only watches)
-pnpm indexer # vault events and fills from chain into SQLite, served on http://127.0.0.1:8789/api/summary
+pnpm indexer # vault events, fills and Taker trades from chain into SQLite, served on http://127.0.0.1:8789/api/summary
 pnpm web     # the dashboard on http://localhost:3000 (AGENT_URL and INDEXER_URL default to ports 8788 and 8789)
 pnpm --filter @naira-desk/contracts test  # the Taker contract, replaying real Textile fills on a Celo fork (needs Foundry)
 pnpm taker:take --dry-run  # the best Textile-under-Uniswap gap right now; drop --dry-run to take it
+pnpm api:buy  # pay the agent's naira API $0.005 over x402 from a demo buyer (first run creates it; shown as ours, never counted)
 ```
+
+### Deploy
+
+The `Dockerfile` runs the agent and the indexer in one container. Give it a volume at `/data`, expose ports 8787 (Stitch's feed), 8788 (the naira API and tape) and 8789 (the indexer), and set:
+
+- `AGENT_KEY`: the agent's private key, as a secret. It's written once to the volume.
+- `API_URL`: the public address of port 8788, so x402 payment requests name the right resource.
+- `NAIRA_DESK_SEED` (optional): logs from another machine, `COPYFILE_DISABLE=1 tar czf - -C ~/.naira-desk $(cd ~/.naira-desk && ls *.jsonl) | base64`, unpacked once on first start.
+
+The dashboard deploys separately (Vercel works), with `AGENT_URL` and `INDEXER_URL` pointing at ports 8788 and 8789.
 
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
 

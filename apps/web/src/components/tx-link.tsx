@@ -7,7 +7,7 @@ export function TxLink({ hash }: { hash: string }) {
       href={celoscan("tx", hash)}
       target="_blank"
       rel="noreferrer"
-      className="font-mono text-xs text-primary underline-offset-4 hover:underline"
+      className="shrink-0 font-mono text-xs text-muted-foreground underline-offset-4 hover:text-signal hover:underline"
     >
       {short(hash)}
     </a>
@@ -21,7 +21,7 @@ export function AddressLink({ address, label }: { address: string; label?: strin
       href={celoscan("address", address)}
       target="_blank"
       rel="noreferrer"
-      className="underline-offset-4 hover:underline"
+      className="underline-offset-4 hover:text-signal hover:underline"
     >
       {label ?? short(address)}
     </a>

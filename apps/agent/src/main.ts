@@ -23,7 +23,7 @@ import { rfqLadders } from "./rfq.ts";
 import { againstStreet } from "./street.ts";
 import { poolQuoter, takeGap } from "./taker.ts";
 import { buildTape, type Sale } from "./tape.ts";
-import { createTrader } from "./trader.ts";
+import { createTrader, type Trade } from "./trader.ts";
 import { createPriceWatch } from "./watch.ts";
 
 const env = process.env;
@@ -60,6 +60,7 @@ const reviewer = await createReviewer({
   logPath: files.reviews,
 });
 const takes = env.TAKES !== "off";
+const trades = await readJsonl<Trade>(files.trades);
 const trader = createTrader({
   ladders: () => rfqLadders(),
   float: () => tokenBalance(client)(USDT, TAKER),
@@ -67,7 +68,10 @@ const trader = createTrader({
   gasLeft: () => client.getBalance({ address: wallet.account.address }),
   poolPays: poolQuoter(client),
   take: (gap, float, minProfit) => takeGap({ client, wallet }, gap, float, minProfit),
-  log: (trade) => appendJsonl(files.trades, trade),
+  log: (trade) => {
+    trades.push(trade);
+    return appendJsonl(files.trades, trade);
+  },
   takes,
 });
 console.log(`trader ${takes ? "taking" : "watching"} Textile gaps for the Taker at ${TAKER}`);
@@ -121,6 +125,8 @@ const api = createApiServer({
       reviews: reviewer.history(),
       sales,
       rates: rates.samples(),
+      trades,
+      trader: trader.status(),
       wallet: wallet.account.address,
       now: Date.now(),
     }),

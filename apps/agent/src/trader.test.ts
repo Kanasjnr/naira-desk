@@ -117,6 +117,19 @@ describe("createTrader", () => {
     await trader.tick();
     expect(trades.map((trade) => trade.kind)).toEqual(["gap"]);
     expect(take).not.toHaveBeenCalled();
+    expect(trader.status()).toMatchObject({ idle: "watching only", float: 10_000_000n });
+  });
+
+  it("reports the float and gas it last saw, and nothing before its first scan", async () => {
+    const { trader } = setup({ float: async () => 10_000_000n });
+    expect(trader.status()).toBeNull();
+    await trader.tick();
+    expect(trader.status()).toEqual({
+      at: 1_800_000_000_000,
+      float: 10_000_000n,
+      celo: CELO,
+      idle: null,
+    });
   });
 
   it("keeps the agent's last 0.1 CELO for its reviews, and says so once", async () => {
@@ -130,12 +143,14 @@ describe("createTrader", () => {
     expect(take).not.toHaveBeenCalled();
     expect(trades.map((trade) => trade.kind)).toEqual(["gap"]);
     expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(trader.status()?.idle).toBe("under 0.1 CELO for gas");
   });
 
   it("doesn't take under Textile's $1 minimum", async () => {
     const { trader, take } = setup({ float: async () => 500_000n });
     await trader.tick();
     expect(take).not.toHaveBeenCalled();
+    expect(trader.status()?.idle).toBe("float under $1");
   });
 
   it("logs a gap that stays open at most every five minutes", async () => {

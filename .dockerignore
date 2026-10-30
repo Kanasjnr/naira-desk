@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+apps/web
+packages/contracts/out
+packages/contracts/cache
+packages/contracts/lib
+.git
+.cursor
+.design
+*.key
+.env*
+*.sqlite*

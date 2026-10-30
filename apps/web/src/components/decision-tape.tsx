@@ -29,7 +29,7 @@ export function DecisionTape({ tape }: { tape: Tape }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Decision tape</CardTitle>
+        <CardTitle>Decision log</CardTitle>
         <CardDescription>
           Each risk check the agent paid for, newest first. Every payment links to Celoscan.
         </CardDescription>
@@ -41,20 +41,20 @@ export function DecisionTape({ tape }: { tape: Tape }) {
           <ol className="divide-y">
             {decisions.slice(0, all ? decisions.length : SHOWN).map((d) => (
               <li key={d.at} className="grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[9rem_1fr]">
-                <div className="text-sm text-muted-foreground">
+                <div className="font-mono text-xs text-muted-foreground">
                   {when(d.at)}
                   <span className="block text-xs">{ago(d.at, tape.generatedAt)}</span>
                 </div>
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <ModeBadge mode={d.mode} />
-                    <span className="text-sm text-muted-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">
                       after {d.trigger}
                       {d.detail ? ` (${d.detail})` : ""} · risk {d.level}
                     </span>
                   </div>
                   <p>{d.reason}</p>
-                  <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <p className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
                     {d.posts > 0 && <span>{d.posts} posts read</span>}
                     {rates(d) && <span>{rates(d)}</span>}
                     {d.receipts.length > 0 ? (
