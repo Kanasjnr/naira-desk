@@ -47,6 +47,16 @@ pnpm taker:take --dry-run  # the best Textile-under-Uniswap gap right now; drop 
 pnpm api:buy  # pay the agent's naira API $0.005 over x402 from a demo buyer (first run creates it; shown as ours, never counted)
 ```
 
+### Deploy
+
+The `Dockerfile` runs the agent and the indexer in one container. Give it a volume at `/data`, expose ports 8787 (Stitch's feed), 8788 (the naira API and tape) and 8789 (the indexer), and set:
+
+- `AGENT_KEY`: the agent's private key, as a secret. It's written once to the volume.
+- `API_URL`: the public address of port 8788, so x402 payment requests name the right resource.
+- `NAIRA_DESK_SEED` (optional): logs from another machine, `COPYFILE_DISABLE=1 tar czf - -C ~/.naira-desk $(cd ~/.naira-desk && ls *.jsonl) | base64`, unpacked once on first start.
+
+The dashboard deploys separately (Vercel works), with `AGENT_URL` and `INDEXER_URL` pointing at ports 8788 and 8789.
+
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
 
 ## License
