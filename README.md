@@ -2,7 +2,7 @@
 
 An onchain bureau de change for the naira.
 
-**Live dashboard: [naira-desk.vercel.app](https://naira-desk.vercel.app)**. The agent and indexer run around the clock on Northflank, and every number on the dashboard links to its Celo transaction. Raw data: [activity log](https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/tape), [Taker trades](https://p03--naira-desk--dtp6fbr6m2jg.code.run/api/taker), [Stitch's price feed](https://p01--naira-desk--dtp6fbr6m2jg.code.run/feed/cngn-usdt).
+**Live dashboard: [naira-desk.vercel.app](https://naira-desk.vercel.app)**. The agent, the indexer and Textile's Stitch bot run around the clock on Northflank, with Stitch quoting the vault off the agent's own price feed, and every number on the dashboard links to its Celo transaction. Raw data: [activity log](https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/tape), [Taker trades](https://p03--naira-desk--dtp6fbr6m2jg.code.run/api/taker), [Stitch's price feed](https://p01--naira-desk--dtp6fbr6m2jg.code.run/feed/cngn-usdt).
 
 Naira Desk trades cNGN, a naira stablecoin, onchain. Like a street BDC, it makes a market, quoting both sides to anyone who asks, and it takes a good price when another dealer offers one. Unlike one, it's run by an autonomous agent, trades around the clock on Celo and publishes every trade.
 
@@ -57,7 +57,7 @@ The `Dockerfile` runs the agent and the indexer in one container. Give it a volu
 - `API_URL`: the public address of port 8788, so x402 payment requests name the right resource.
 - `NAIRA_DESK_SEED` (optional): logs from another machine, `COPYFILE_DISABLE=1 tar czf - -C ~/.naira-desk $(cd ~/.naira-desk && ls *.jsonl) | base64`, unpacked once on first start.
 
-The live desk runs this container on [Northflank](https://northflank.com) with a volume at `/data`. The dashboard is on Vercel, with the project root at `apps/web` and `AGENT_URL` and `INDEXER_URL` pointing at the container's ports 8788 and 8789. Both redeploy on every merge to `main`.
+The live desk runs this container on [Northflank](https://northflank.com) with a volume at `/data`, next to a second service running Textile's Stitch image (`ghcr.io/textile-protocol/textile-stitch`) with the vault bot's `stitch.toml`, signer key and maker credential as secrets, and its `[feed].url` set to port 8787's public HTTPS address. The dashboard is on Vercel, with the project root at `apps/web` and `AGENT_URL` and `INDEXER_URL` pointing at the container's ports 8788 and 8789. Both redeploy on every merge to `main`.
 
 Changes land through pull requests into `staging`, which is for shadow-mode testing. A release pull request from `staging` updates `main`, the version that runs live.
 
