@@ -12,7 +12,13 @@ Built for the **Agents on Open Rails** hackathon (Celo), targeting the Textile F
 
 ## Status
 
-The vault is live on Celo mainnet at [`0xD713…AD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) and has traded on Textile since 17 Oct. The agent is ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908). The Taker is live at [`0xcf02…dA57`](https://celoscan.io/address/0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57), its source verified on Sourcify.
+Live on Celo mainnet. The vault has traded on Textile since 17 Oct, and the Taker trades from the agent's float around the clock.
+
+| | Address | What it is |
+|---|---|---|
+| Agent wallet | [`0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582`](https://celoscan.io/address/0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582) | ERC-8004 agent [#9908](https://celoscan.io/nft/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/9908). Sends every tagged transaction: takes, vault admin, reviews, sale settlements. |
+| Taker | [`0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57`](https://celoscan.io/address/0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57) | The agent's trading contract, owned by the agent wallet. Every Textile fill and Uniswap sale runs through it. Source verified on Sourcify. |
+| Vault | [`0xD7137d85607BE18628CE00B1020895cEBceEAD6C`](https://celoscan.io/address/0xD7137d85607BE18628CE00B1020895cEBceEAD6C) | The community-funded Textile Operator Vault for cNGN/USD₮, administered by the agent wallet. |
 
 ## How it works
 
