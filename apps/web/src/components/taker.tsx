@@ -1,5 +1,9 @@
+"use client";
+
 import { ArrowRight, Eye, PauseCircle, PlugZap } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -25,7 +29,7 @@ import { AddressLink, TxLink } from "./tx-link";
 
 // The trader scans every 15 seconds, so a status older than this means it stopped.
 const QUIET_MS = 2 * 60_000;
-const SHOWN = 20;
+const PAGE = 20;
 
 const pct = (n: number) => `${n.toFixed(2)}%`;
 const tokens = (n: number | null) =>
@@ -178,6 +182,7 @@ function Markets({ taker, tape }: { taker: Taker | null; tape: TakerTape | null 
 }
 
 function Trades({ takes }: { takes: Take[] }) {
+  const [page, setPage] = useState(0);
   if (takes.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -185,47 +190,80 @@ function Trades({ takes }: { takes: Take[] }) {
       </p>
     );
   }
+  const pages = Math.ceil(takes.length / PAGE);
+  // New trades arrive at the top, so a page past the end after a refresh falls back to the last.
+  const current = Math.min(page, pages - 1);
+  const first = current * PAGE;
+  const shown = takes.slice(first, first + PAGE);
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>When</TableHead>
-          <TableHead>Market</TableHead>
-          <TableHead className="text-right">Paid</TableHead>
-          <TableHead className="text-right">Pool paid</TableHead>
-          <TableHead className="text-right">Profit</TableHead>
-          <TableHead className="text-right">Gas</TableHead>
-          <TableHead>Tx</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {takes.slice(0, SHOWN).map((take) => (
-          <TableRow key={`${take.block}-${take.logIndex}`}>
-            <TableCell>{when(take.at)}</TableCell>
-            <TableCell>
-              <span className="flex items-center gap-2">
-                <MarketDot market={take.market} />
-                {take.market}
-              </span>
-            </TableCell>
-            <TableCell className="text-right tabular-nums">{dollars(take.spent)}</TableCell>
-            <TableCell className="text-right tabular-nums">{dollars(take.received)}</TableCell>
-            <TableCell className="text-right text-signal tabular-nums">
-              +{dollars(take.profit)}{" "}
-              <span className="text-xs text-muted-foreground">
-                {pct(edge(take.profit, take.spent))}
-              </span>
-            </TableCell>
-            <TableCell className="text-right text-muted-foreground tabular-nums">
-              {take.gasCelo.toFixed(3)} CELO
-            </TableCell>
-            <TableCell>
-              <TxLink hash={take.tx} />
-            </TableCell>
+    <div className="space-y-2">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>When</TableHead>
+            <TableHead>Market</TableHead>
+            <TableHead className="text-right">Paid</TableHead>
+            <TableHead className="text-right">Pool paid</TableHead>
+            <TableHead className="text-right">Profit</TableHead>
+            <TableHead className="text-right">Gas</TableHead>
+            <TableHead>Tx</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {shown.map((take) => (
+            <TableRow key={`${take.block}-${take.logIndex}`}>
+              <TableCell>{when(take.at)}</TableCell>
+              <TableCell>
+                <span className="flex items-center gap-2">
+                  <MarketDot market={take.market} />
+                  {take.market}
+                </span>
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{dollars(take.spent)}</TableCell>
+              <TableCell className="text-right tabular-nums">{dollars(take.received)}</TableCell>
+              <TableCell className="text-right text-signal tabular-nums">
+                +{dollars(take.profit)}{" "}
+                <span className="text-xs text-muted-foreground">
+                  {pct(edge(take.profit, take.spent))}
+                </span>
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground tabular-nums">
+                {take.gasCelo.toFixed(3)} CELO
+              </TableCell>
+              <TableCell>
+                <TxLink hash={take.tx} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {pages > 1 && (
+        <div className="flex items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
+          <span>
+            PAGE {current + 1} OF {pages} · trades {first + 1}–{first + shown.length} of{" "}
+            {takes.length}
+          </span>
+          <span className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+            >
+              Newer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={current === pages - 1}
+              onClick={() => setPage(current + 1)}
+            >
+              Older
+            </Button>
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
