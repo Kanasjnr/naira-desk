@@ -44,12 +44,14 @@ contract AgentDelegateReplayTest is Test {
     );
 
     address thief = makeAddr("thief");
+    uint256 deadline;
 
     function replay(string memory name) internal returns (AgentDelegate wallet, bytes memory swap) {
         string memory fixture = vm.readFile(string.concat("test/fixtures/", name, ".json"));
         vm.createSelectFork(
             vm.envOr("CELO_RPC_URL", string("https://forno.celo.org")), fixture.readUint(".block")
         );
+        deadline = fixture.readUint(".deadline");
         vm.etch(QUOTED_TAKER, address(new AgentDelegate(REACTOR, USDT, ROUTER)).code);
         return (AgentDelegate(QUOTED_TAKER), fixture.readBytes(".swap"));
     }
@@ -107,6 +109,89 @@ contract AgentDelegateReplayTest is Test {
         take(wallet, swap, CNGN, profit + 1);
     }
 
+    // Someone else sells 30,000 wBRL into the pool first, so it no longer pays what the maker took.
+    function test_RevertsWhenThePoolMovedFirst() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("wbrl");
+        address rival = makeAddr("rival");
+        deal(address(WBRL), rival, 30_000e18);
+        vm.startPrank(rival);
+        WBRL.approve(address(ROUTER), 30_000e18);
+        ROUTER.exactInputSingle(
+            ISwapRouter02.ExactInputSingleParams({
+                tokenIn: address(WBRL),
+                tokenOut: address(USDT),
+                fee: 100,
+                recipient: rival,
+                amountIn: 30_000e18,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            })
+        );
+        vm.stopPrank();
+
+        uint256 start = USDT.balanceOf(address(wallet));
+        vm.expectPartialRevert(AgentDelegate.NoProfit.selector);
+        take(wallet, swap, WBRL, 0);
+        assertEq(USDT.balanceOf(address(wallet)), start);
+    }
+
+    function test_OnlyTheQuotedWalletFills() public {
+        (, bytes memory swap) = replay("cngn");
+        address other = makeAddr("other wallet");
+        vm.etch(other, address(new AgentDelegate(REACTOR, USDT, ROUTER)).code);
+        deal(address(USDT), other, 10e6);
+
+        vm.expectPartialRevert(bytes4(keccak256("FillerNotPreferred(address,uint256)")));
+        take(AgentDelegate(payable(other)), swap, CNGN, 0);
+    }
+
+    function test_RevertsOnAnExpiredQuote() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        vm.warp(deadline + 1);
+
+        vm.expectPartialRevert(bytes4(keccak256("SignatureExpired(uint256)")));
+        take(wallet, swap, CNGN, 0);
+    }
+
+    function test_RevertsOnAQuoteAlreadyFilled() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        take(wallet, swap, CNGN, 0);
+
+        vm.expectRevert(bytes4(keccak256("InvalidNonce()")));
+        take(wallet, swap, CNGN, 0);
+    }
+
+    function test_RevertsWithoutEnoughUsdtToPay() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        deal(address(USDT), address(wallet), CNGN_SPENT - 1);
+
+        vm.expectRevert();
+        take(wallet, swap, CNGN, 0);
+    }
+
+    function test_RevertsWhenToldTheWrongToken() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        vm.expectRevert();
+        take(wallet, swap, WBRL, 0);
+    }
+
+    function test_RevertsWithoutAPoolAtThatFee() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        vm.prank(address(wallet));
+        vm.expectRevert();
+        wallet.take(swap, CNGN, 500, 0);
+    }
+
+    // The reactor sends any CELO it holds to the filler, so 1 wei sent there mustn't block takes.
+    function test_AcceptsCeloTheReactorRefunds() public {
+        (AgentDelegate wallet, bytes memory swap) = replay("cngn");
+        uint256 before = address(wallet).balance;
+        vm.deal(REACTOR, 1);
+
+        take(wallet, swap, CNGN, 0);
+        assertEq(address(wallet).balance, before + 1);
+    }
+
     function test_OnlyTheWalletItselfTrades() public {
         (AgentDelegate wallet, bytes memory swap) = replay("cngn");
 
@@ -128,6 +213,19 @@ contract AgentDelegateReplayTest is Test {
         assertEq(
             AgentDelegate(payable(agent)).isValidSignature(digest, sign(otherKey, digest)),
             bytes4(0xffffffff)
+        );
+    }
+
+    function test_RejectsMalleableSignatures() public {
+        (address agent, uint256 key) = makeAddrAndKey("agent");
+        vm.etch(agent, address(new AgentDelegate(REACTOR, USDT, ROUTER)).code);
+        bytes32 digest = keccak256("anything the agent signs");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
+        uint256 n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+        bytes memory flipped = abi.encodePacked(r, bytes32(n - uint256(s)), v == 27 ? 28 : 27);
+
+        assertEq(
+            AgentDelegate(payable(agent)).isValidSignature(digest, flipped), bytes4(0xffffffff)
         );
     }
 
