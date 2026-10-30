@@ -190,6 +190,7 @@ describe("buildTape", () => {
     });
     expect(tape.sales).toMatchObject({ count: 1, usd: 0.005, independent: 1 });
     expect(tape.agent).toMatchObject({
+      taggedTxs: null,
       agentId: 9908,
       vault: "0xD7137d85607BE18628CE00B1020895cEBceEAD6C",
     });

@@ -56,20 +56,20 @@ export function Ticker({
   const sample = tape?.rates.at(-1);
   const street = tape?.current?.street;
   const onchain = sample?.ngnPerUsdt ?? street?.onchain;
-  const premium = sample?.naira ? (sample.naira / sample.ngnPerUsdt - 1) * 100 : null;
   const nav = vault?.summary.nav.last;
+  const volume = (taker?.volumeUsdt ?? 0) + (vault?.summary.fills.volumeUsdt ?? 0);
+  const tagged = tape?.agent.taggedTxs;
 
   return (
-    <div className="flex items-center gap-6 overflow-x-auto rounded-md border bg-card px-3 py-2 font-mono text-xs whitespace-nowrap tabular-nums">
+    <div className="sticky top-12 z-10 flex items-center gap-6 overflow-x-auto rounded-md border bg-card px-3 py-2 font-mono text-xs whitespace-nowrap tabular-nums">
       <Heartbeat tape={tape} stale={stale} />
       {tape?.current && <ModeBadge mode={tape.current.mode} />}
+      {(taker || vault) && <Item label="VOLUME" value={dollars(volume)} lit />}
+      {tagged != null && <Item label="TAGGED TXS" value={tagged.toLocaleString("en-US")} />}
       <Item label="cNGN/USDT" value={onchain ? naira(onchain) : "—"} lit />
       {street?.official && <Item label="OFFICIAL" value={naira(street.official)} />}
       {street?.parallel && <Item label="PARALLEL" value={naira(street.parallel)} />}
       {sample?.naira && <Item label="EXCHANGES" value={naira(sample.naira)} />}
-      {premium != null && (
-        <Item label="SPREAD" value={`${premium >= 0 ? "+" : ""}${premium.toFixed(2)}%`} />
-      )}
       {taker && <Item label="TAKER P&L" value={`+${dollars(taker.profitUsdt)}`} lit />}
       {nav && <Item label="VAULT NAV" value={dollars(nav.nav)} />}
       {tape && <Item label="AGENT" value={`#${tape.agent.agentId}`} />}
