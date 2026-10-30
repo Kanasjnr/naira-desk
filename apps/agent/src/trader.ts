@@ -139,7 +139,10 @@ export function createTrader({
     };
     const miss = async (gap: Gap, error: unknown) => {
       const reason = briefError(error);
-      lastMiss.set(gap.market.name, now());
+      // Textile holds a filled quote's funds for a while after it lands. That says nothing
+      // about the market, so try it again on the next scan rather than in a minute.
+      const held = error instanceof InsufficientFunds && error.committed > 0n;
+      if (!held) lastMiss.set(gap.market.name, now());
       await log({
         at: now(),
         kind: "miss",
