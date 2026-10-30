@@ -1,9 +1,26 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Naira Desk",
-  "description": "An onchain bureau de change for the naira. An autonomous agent that quotes cNGN/USDT on Textile FX from a community-funded vault on Celo, and takes mispriced Textile quotes through its own contract.",
-  "services": [{ "name": "web", "endpoint": "https://github.com/Kanasjnr/naira-desk" }],
-  "x402Support": false,
+  "description": "An onchain bureau de change for the naira. An autonomous agent that quotes cNGN/USDT on Textile FX from a community-funded vault on Celo, takes mispriced Textile quotes through its own contract, and sells its naira rate to other agents over x402 for $0.005 a call.",
+  "services": [
+    {
+      "name": "web",
+      "endpoint": "https://naira-desk.vercel.app"
+    },
+    {
+      "name": "naira-api",
+      "endpoint": "https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/naira"
+    },
+    {
+      "name": "tape",
+      "endpoint": "https://p02--naira-desk--dtp6fbr6m2jg.code.run/v1/tape"
+    },
+    {
+      "name": "source",
+      "endpoint": "https://github.com/Kanasjnr/naira-desk"
+    }
+  ],
+  "x402Support": true,
   "active": true,
   "supportedTrust": ["reputation"]
 }
