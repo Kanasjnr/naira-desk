@@ -16,7 +16,15 @@ export type Decision = {
 
 // The agent's /v1/tape response.
 export type Tape = {
-  agent: { name: string; registry: string; agentId: number; wallet: string; vault: string };
+  agent: {
+    name: string;
+    registry: string;
+    agentId: number;
+    wallet: string;
+    vault: string;
+    // Missing from an agent that predates the count.
+    taggedTxs?: number | null;
+  };
   generatedAt: number;
   current: {
     mode: Mode;

@@ -16,9 +16,9 @@ export function Tile({
   lit?: boolean;
 }) {
   return (
-    <Card size="sm" className="gap-1.5">
+    <Card size="sm" className={`gap-1.5 ${lit ? "border-signal/50 bg-signal/5" : ""}`}>
       <CardHeader>
-        <CardTitle>{label}</CardTitle>
+        <CardTitle className={lit ? "text-signal" : ""}>{label}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className={`num text-2xl font-medium tracking-tight ${lit ? "text-signal" : ""}`}>
@@ -30,7 +30,7 @@ export function Tile({
   );
 }
 
-// The desk at a glance, from the agent's logs and the indexer.
+// The desk at a glance, from the agent's logs and the indexer. Volume leads.
 export function Figures({
   tape,
   vault,
@@ -41,40 +41,47 @@ export function Figures({
   taker: Taker | null;
 }) {
   const nav = vault?.summary.nav.last;
-  const changes =
-    tape?.decisions.filter((d, i) => i > 0 && d.mode !== tape.decisions[i - 1]?.mode).length ?? 0;
+  const takerVolume = taker?.volumeUsdt ?? 0;
+  const vaultVolume = vault?.summary.fills.volumeUsdt ?? 0;
+  const tagged = tape?.agent.taggedTxs;
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <Tile
+        label="Total volume"
+        value={taker || vault ? dollars(takerVolume + vaultVolume) : "—"}
+        sub={`${dollars(takerVolume)} Taker · ${dollars(vaultVolume)} vault`}
+        lit
+      />
+      <Tile
         label="Taker profit"
         value={taker ? `+${dollars(taker.profitUsdt)}` : "—"}
-        sub={taker ? `${taker.count} trades · ${dollars(taker.volumeUsdt)}` : "indexer offline"}
-        lit={Boolean(taker?.profitUsdt)}
+        sub={
+          taker ? `${taker.count.toLocaleString("en-US")} trades, one tx each` : "indexer offline"
+        }
+      />
+      <Tile
+        label="Tagged txs"
+        value={tagged != null ? tagged.toLocaleString("en-US") : "—"}
+        sub="each carries the attribution tag"
       />
       <Tile
         label="Vault value"
         value={nav ? dollars(nav.nav) : "—"}
-        sub={nav?.perShare ? `$${nav.perShare.toFixed(4)} a share` : "not settled yet"}
-      />
-      <Tile
-        label="Volume filled"
-        value={vault ? dollars(vault.summary.fills.volumeUsdt) : "—"}
         sub={
           vault
-            ? `${dollars(vault.summary.fills.independentVolumeUsdt)} independent`
+            ? `${vault.summary.fills.count} fills · ${dollars(vault.summary.fills.independentVolumeUsdt)} independent`
             : "indexer offline"
         }
       />
       <Tile
         label="Paid research"
         value={tape ? dollars(tape.research.usd) : "—"}
-        sub={tape ? `${tape.research.calls} calls through buy` : "agent offline"}
-      />
-      <Tile
-        label="Risk checks"
-        value={tape ? String(tape.decisions.length) : "—"}
-        sub={`${changes} mode ${changes === 1 ? "change" : "changes"}`}
+        sub={
+          tape
+            ? `${tape.research.calls} buy calls · ${tape.decisions.length} risk checks`
+            : "agent offline"
+        }
       />
       <Tile
         label="Reviews · sales"

@@ -77,6 +77,14 @@ const trader = createTrader({
 console.log(`trader ${takes ? "taking" : "watching"} Textile gaps for the Taker at ${TAKER}`);
 const watch = createPriceWatch();
 const rates = await openRateHistory(files.rates);
+let taggedTxs: number | null = null;
+const countTagged = () =>
+  client
+    .getTransactionCount({ address: wallet.account.address })
+    .then((count) => {
+      taggedTxs = count;
+    })
+    .catch(() => {});
 const sales = await readJsonl<Sale>(files.sales);
 
 const restored = desk.current();
@@ -85,6 +93,7 @@ if (restored) console.log(`restored ${restored.mode} from ${new Date(restored.at
 // Wait for each refresh to finish before scheduling the next, so slow sources can't pile up.
 // Risk checks run alongside and never hold up the feed.
 let timer: NodeJS.Timeout | undefined;
+let countedAt = 0;
 let stopped = false;
 async function loop() {
   await pricer.refresh();
@@ -96,6 +105,10 @@ async function loop() {
   void (alert ? desk.alert(alert.trigger, alert.detail) : desk.tick());
   void reviewer.tick();
   void trader.tick();
+  if (Date.now() - countedAt >= 60_000) {
+    countedAt = Date.now();
+    void countTagged();
+  }
   if (!stopped) timer = setTimeout(loop, refreshMs);
 }
 await loop();
@@ -128,6 +141,7 @@ const api = createApiServer({
       trades,
       trader: trader.status(),
       wallet: wallet.account.address,
+      taggedTxs,
       now: Date.now(),
     }),
   paywall,

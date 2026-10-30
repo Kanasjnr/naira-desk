@@ -8,7 +8,10 @@ export const naira = (n?: number | null) =>
 
 export const nairaShort = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
 
-export const dollars = (n: number) => (n > 0 && n < 0.1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`);
+export const dollars = (n: number) =>
+  n > 0 && n < 0.1
+    ? `$${n.toFixed(3)}`
+    : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const short = (hex: string) => `${hex.slice(0, 6)}…${hex.slice(-4)}`;
 
