@@ -206,8 +206,9 @@ Since 30 Oct nothing runs on the operator's laptop. Two always-on services on No
 
 | Contract | Address | Status |
 |---|---|---|
+| Agent wallet A (ERC-8004 #9908) | `0xE4D88C9A86bd42D4f5D05a234E6D56f71bB58582` | ✅ owns the Taker, administers the vault |
 | Naira Desk Vault | `0xD7137d85607BE18628CE00B1020895cEBceEAD6C` | ✅ deployed 14 Oct |
-| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, Sourcify exact match |
+| Taker | `0xcf024F46d1756498f3ffD04F1Da4793eE1eFdA57` | ✅ deployed 26 Oct, owner A, Sourcify exact match |
 | OperatorVaultFactory | `0x88104decA449C797632AfdcA77A3140b24cD844A` | ✅ |
 | LimitOrderReactor | `0xa9AA0a64769cBed4d3B1Ceb4Df01CdE915C235b3` | ✅ |
 | PreferredFillerValidation | `0x10B9EbA3a175Df418a35CB8329a527691EE258C5` | ✅ |
