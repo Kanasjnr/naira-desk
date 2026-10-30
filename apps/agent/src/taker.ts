@@ -8,7 +8,7 @@ import {
   uniswapQuoterAbi,
   VAULT,
 } from "@naira-desk/chain";
-import { briefError, USDT } from "@naira-desk/shared";
+import { briefError, CELO_CHAIN_ID, USDT } from "@naira-desk/shared";
 import {
   type Address,
   concat,
@@ -45,6 +45,29 @@ export async function takerProof(client: Client, agent: Signer): Promise<TakerPr
   const signed = await agent.signMessage({ message });
   const signature = concat([nonce, numberToHex(issuedAt, { size: 32 }), signed]);
   return { nonce, issuedAt, signature, scheme: "eip191" };
+}
+
+// Textile's `eip191` taker-control text, the same text the Taker builds for itself.
+export const takerControl = (taker: Address, nonce: Hex, issuedAt: number) =>
+  `Textile Taker Control
+Version: 1
+
+Sign to prove you control this wallet so Textile can request a firm
+quote for it. This does not approve any transfer, trade or allowance.
+
+Wallet: ${taker.toLowerCase()}
+Chain: ${CELO_CHAIN_ID}
+Nonce: ${nonce}
+Issued at: ${issuedAt}`;
+
+// A wallet that takes for itself signs the text with its own key. Once it delegates to the
+// AgentDelegate, Textile's EIP-1271 check accepts the same signature.
+export async function walletProof(wallet: Pick<Wallet, "account" | "signMessage">) {
+  const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const issuedAt = Date.now();
+  const message = takerControl(wallet.account.address, nonce, issuedAt);
+  const signature = await wallet.signMessage({ message });
+  return { nonce, issuedAt, signature, scheme: "eip191" } satisfies TakerProof;
 }
 
 // A pool that can't fill the amount at all pays nothing.

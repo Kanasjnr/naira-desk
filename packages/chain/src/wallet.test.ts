@@ -98,6 +98,28 @@ describe("createTaggedWalletClient", () => {
     expect(account.nonceManager).toBeDefined();
   });
 
+  it("tags a delegation the wallet sends for itself", async () => {
+    const { wallet, sent } = setup();
+    const self = wallet.account.address;
+    const authorization = await wallet.signAuthorization({
+      contractAddress: usdt,
+      chainId: 42220,
+      nonce: 1,
+    });
+    await wallet.sendTransaction({
+      to: self,
+      nonce: 0,
+      authorizationList: [authorization],
+      ...fees,
+    });
+
+    const tx = parseTransaction(sent[0] as Hex);
+    expect(tx.type).toBe("eip7702");
+    expect(tx.data).toBe(suffix);
+    expect(tx.authorizationList?.[0]?.address).toBe(usdt.toLowerCase());
+    expect(tx.authorizationList?.[0]?.nonce).toBe(1);
+  });
+
   it("only exposes methods that tag", () => {
     const { wallet } = setup();
     // @ts-expect-error not part of the tagged wallet

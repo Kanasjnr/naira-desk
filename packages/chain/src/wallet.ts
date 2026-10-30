@@ -52,6 +52,7 @@ export function requireTagOnSign(account: LocalAccount) {
     nonceManager: account.nonceManager,
     signMessage: account.signMessage,
     signTypedData: account.signTypedData,
+    signAuthorization: account.signAuthorization,
     signTransaction,
   });
 }
@@ -65,12 +66,14 @@ export function createTaggedWalletClient(privateKey: Hex, transport: Transport) 
     transport,
   }).extend(withAttribution(ATTRIBUTION_CODE));
 
-  // Only methods withAttribution wraps. Anything else would be refused at signing.
+  // Only methods withAttribution wraps, plus signers that send nothing. Anything else would be
+  // refused at signing.
   return {
     account: client.account,
     sendTransaction: client.sendTransaction,
     writeContract: client.writeContract,
     signMessage: client.signMessage,
     signTypedData: client.signTypedData,
+    signAuthorization: client.signAuthorization,
   };
 }

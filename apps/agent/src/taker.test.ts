@@ -4,7 +4,14 @@ import { custom, hexToNumber, recoverMessageAddress, size, slice } from "viem";
 import { generatePrivateKey } from "viem/accounts";
 import { describe, expect, it, vi } from "vitest";
 import type { FirmQuote } from "./rfq.ts";
-import { poolQuoter, quoteProblem, takeGap, takerProof } from "./taker.ts";
+import {
+  poolQuoter,
+  quoteProblem,
+  takeGap,
+  takerControl,
+  takerProof,
+  walletProof,
+} from "./taker.ts";
 
 describe("takerProof", () => {
   it("signs the Taker's own text and puts the nonce and issuedAt in front", async () => {
@@ -31,6 +38,26 @@ describe("takerProof", () => {
     expect(hexToNumber(slice(proof.signature, 32, 64))).toBe(proof.issuedAt);
     const signer = await recoverMessageAddress({ message, signature: slice(proof.signature, 64) });
     expect(signer).toBe(agent.account.address);
+    expect(proof.scheme).toBe("eip191");
+  });
+});
+
+describe("walletProof", () => {
+  it("signs Textile's text for the wallet's own address with the wallet's key", async () => {
+    const offline = custom({
+      request: async () => {
+        throw new Error("offline");
+      },
+    });
+    const wallet = createTaggedWalletClient(generatePrivateKey(), offline);
+
+    const proof = await walletProof(wallet);
+    const message = takerControl(wallet.account.address, proof.nonce, proof.issuedAt);
+
+    expect(message).toContain(`Wallet: ${wallet.account.address.toLowerCase()}\nChain: 42220\n`);
+    expect(message).toMatch(/\nIssued at: \d+$/);
+    const signer = await recoverMessageAddress({ message, signature: proof.signature });
+    expect(signer).toBe(wallet.account.address);
     expect(proof.scheme).toBe("eip191");
   });
 });
