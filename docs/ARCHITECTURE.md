@@ -173,16 +173,18 @@ Vault rules: `strategySigner ≠ riskSigner` and `operatorAdmin ≠ riskAdmin` �
 
 ```mermaid
 flowchart LR
-  subgraph VM["One small always-on machine"]
-    STI["Stitch"]
-    AGT["agent"]
-    IDXR["indexer"]
-    DB[("data dir: JSONL logs + SQLite")]
+  subgraph NF["Northflank, always on"]
+    subgraph DESK["service naira-desk: our Dockerfile"]
+      AGT["agent"]
+      IDXR["indexer"]
+      DB[("volume /data: JSONL logs + SQLite")]
+    end
+    STI["service stitch: Textile's image"]
   end
-  WEB["web: dashboard"]
+  WEB["web: dashboard on Vercel"]
   RPC["Celo RPC (forno)"]
   TEX["Textile RFQ API + maker stream"]
-  STI <-->|feed over localhost| AGT
+  STI -->|"feed over HTTPS"| AGT
   STI <--> TEX
   AGT <--> TEX
   AGT --> DB
@@ -194,7 +196,7 @@ flowchart LR
   WEB -->|read-only HTTP| IDXR
 ```
 
-Today it all runs on the operator's laptop. The Taker only earns while the agent runs, and the biggest gap so far opened around midnight in Lagos, so an always-on machine matters more than before. ⚠️ Hosting is still to be chosen.
+Since 30 Oct nothing runs on the operator's laptop. Two always-on services on Northflank's free plan: `naira-desk` runs the agent and indexer from our `Dockerfile` with a volume for their data, and `stitch` runs Textile's published Stitch image with the vault bot's config. Stitch reads the agent's feed at its public HTTPS address, since it refuses plain HTTP off localhost. The dashboard is on Vercel at [naira-desk.vercel.app](https://naira-desk.vercel.app), with its project root at `apps/web`. Merges to `main` redeploy the desk and the dashboard. Keys are runtime secrets: the agent's key is written once to the volume, and Stitch's entrypoint writes its signer key and maker credential to owner-only files and drops them from the environment. The Taker only earns while the agent runs, and the biggest gap so far opened around midnight in Lagos, which is why none of this depends on a laptop.
 
 ---
 
@@ -430,7 +432,7 @@ flowchart LR
 
 **Taker.** Nothing new: they use the Textile app or API, and our vault is one of the makers that may quote.
 
-**Operator.** Runs `pnpm agent`, `pnpm indexer` and `pnpm web`, keeps Stitch on, funds the Taker's float, and withdraws profits from their own wallet.
+**Operator.** Merges releases to `main`, which redeploys the desk and the dashboard; funds the Taker's float and the agent's gas; and withdraws profits from their own wallet. Locally, `pnpm agent`, `pnpm indexer` and `pnpm web` run the same stack for development, never alongside the hosted agent, since both would trade with the same key.
 
 **Judge.** Opens the dashboard: vault value and share price, volume filled, Taker trades and P&L, paid research, reviews and API sales, each linked to Celoscan. The agent's ERC-8004 card links the vault, Taker and repo.
 
@@ -538,7 +540,7 @@ gantt
   Submit                           :milestone, m1, 2026-11-08, 0d
 ```
 
-**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker was deployed on 26 Oct; the trader that drives it is next.
+**Status:** the vault has traded on Textile since 17 Oct, the agent has run paid risk checks, reviews and the naira API since 16 Oct, and the indexer and dashboard read everything from chain. The Taker was deployed on 26 Oct and made its first four trades that day. Since 30 Oct the desk, Stitch and the dashboard run hosted, and Stitch quotes the vault off the agent's own feed.
 
 ---
 
