@@ -61,15 +61,15 @@ describe("createTrader", () => {
     expect(take).not.toHaveBeenCalled();
   });
 
-  it("takes the best gap half the float covers, asking for at least its gas back", async () => {
+  it("takes the best gap the float covers, asking for at least its gas back", async () => {
     const { trader, trades, take } = setup({ float: async () => 10_000_000n });
     await trader.tick();
     expect(take).toHaveBeenCalledTimes(1);
-    expect(take.mock.calls[0]?.[0].spend).toBe(5_000_000n);
+    expect(take.mock.calls[0]?.[0].spend).toBe(10_000_000n);
     expect(take.mock.calls[0]?.[2]).toBe(GAS);
     expect(trades.map((trade) => trade.kind)).toEqual(["gap", "take"]);
     expect(trades[1]).toEqual(
-      expect.objectContaining({ market: "wARS", spent: "5000000", txHash: hash }),
+      expect.objectContaining({ market: "wARS", spent: "10000000", txHash: hash }),
     );
   });
 
@@ -107,7 +107,7 @@ describe("createTrader", () => {
     expect(trades[1]).toEqual(
       expect.objectContaining({
         reason: "the firm quote doesn't pay: NoProfit",
-        spend: "5000000",
+        spend: "10000000",
       }),
     );
   });
@@ -121,12 +121,12 @@ describe("createTrader", () => {
         gasPaid: 0n,
       }))
       .mockRejectedValueOnce(
-        new InsufficientFunds("/rfq/request", 5_000_000n, 10_000_000n, 8_000_000n),
+        new InsufficientFunds("/rfq/request", 10_000_000n, 10_000_000n, 4_000_000n),
       );
     const { trader, trades } = setup({ take, float: async () => 10_000_000n });
     await trader.tick();
     expect(take).toHaveBeenCalledTimes(2);
-    expect(take.mock.calls[1]?.[0].spend).toBe(2_000_000n);
+    expect(take.mock.calls[1]?.[0].spend).toBe(6_000_000n);
     expect(trades.map((trade) => trade.kind)).toEqual(["gap", "take"]);
   });
 
@@ -196,12 +196,6 @@ describe("createTrader", () => {
     expect(trades.map((trade) => trade.kind)).toEqual(["gap"]);
     expect(console.warn).toHaveBeenCalledTimes(1);
     expect(trader.status()?.idle).toBe("under 0.1 CELO for gas");
-  });
-
-  it("trades all of a float too small to split into two minimum takes", async () => {
-    const { trader, take } = setup({ float: async () => 1_500_000n });
-    await trader.tick();
-    expect(take.mock.calls[0]?.[0].spend).toBe(1_500_000n);
   });
 
   it("doesn't take under Textile's $1 minimum", async () => {
