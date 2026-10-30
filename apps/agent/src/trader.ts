@@ -1,7 +1,7 @@
 import { briefError, USDT } from "@naira-desk/shared";
 import { formatUnits, type Hash } from "viem";
 import { bestGap, type Gap, gasInUsdt, ladderFor, MARKETS, type PoolQuoter } from "./gaps.ts";
-import type { Ladder } from "./rfq.ts";
+import { InsufficientFunds, type Ladder } from "./rfq.ts";
 import type { Took } from "./taker.ts";
 
 // Gaps are sized as if the Taker held this much, so they're logged before there's money for them.
@@ -102,7 +102,7 @@ export function createTrader({
     status = { at: now(), float: held, celo, idle };
     const canTake = idle === null;
 
-    let best: Gap | undefined;
+    let best: { gap: Gap; ladder: Ladder } | undefined;
     for (const market of MARKETS) {
       const ladder = ladderFor(all, USDT, market.token);
       const smallest = ladder?.levels[0];
@@ -116,35 +116,52 @@ export function createTrader({
       await sighting(seen, gas);
       if (!canTake || now() - (lastMiss.get(market.name) ?? 0) < MISS_PAUSE) continue;
       const mine = held === budget ? seen : await bestGap(market, ladder, held, poolPays);
-      if (mine && mine.profit > gas && (!best || mine.profit > best.profit)) best = mine;
+      if (mine && mine.profit > gas && (!best || mine.profit > best.gap.profit)) {
+        best = { gap: mine, ladder };
+      }
     }
     if (!best) return;
 
-    try {
-      const took = await take(best, held, gas);
+    const attempt = async (gap: Gap) => {
+      const took = await take(gap, held, gas);
       await log({
         at: now(),
         kind: "take",
-        market: best.market.name,
+        market: gap.market.name,
         spent: String(took.spent),
         received: String(took.received),
         gasPaid: String(took.gasPaid),
         txHash: took.hash,
       });
       console.log(
-        `took ${best.market.name}: paid ${usd(took.spent)}, the pool paid ${usd(took.received)} [${took.hash}]`,
+        `took ${gap.market.name}: paid ${usd(took.spent)}, the pool paid ${usd(took.received)} [${took.hash}]`,
       );
-    } catch (error) {
+    };
+    const miss = async (gap: Gap, error: unknown) => {
       const reason = briefError(error);
-      lastMiss.set(best.market.name, now());
+      lastMiss.set(gap.market.name, now());
       await log({
         at: now(),
         kind: "miss",
-        market: best.market.name,
-        spend: String(best.spend),
+        market: gap.market.name,
+        spend: String(gap.spend),
         reason,
       });
-      console.warn(`couldn't take ${best.market.name}: ${reason}`);
+      console.warn(`couldn't take ${gap.market.name}: ${reason}`);
+    };
+
+    try {
+      await attempt(best.gap);
+    } catch (error) {
+      // Textile's view of the float can lag a take or a deposit, or hold some of it for a live
+      // quote. Retry once at what it says is free, while the gap is still open.
+      const free = error instanceof InsufficientFunds ? error.free : 0n;
+      const smaller =
+        free >= MIN_TAKE && free < best.gap.spend
+          ? await bestGap(best.gap.market, best.ladder, free, poolPays)
+          : undefined;
+      if (!smaller || smaller.profit <= gas) return miss(best.gap, error);
+      await attempt(smaller).catch((retry) => miss(smaller, retry));
     }
   }
 
