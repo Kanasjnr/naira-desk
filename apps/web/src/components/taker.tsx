@@ -144,18 +144,27 @@ function Markets({ taker, tape }: { taker: Taker | null; tape: TakerTape | null 
         const totals = taker?.markets[market];
         const gaps = tape?.gaps.filter((gap) => gap.market === market) ?? [];
         const widest = Math.max(0, ...gaps.map((gap) => edge(gap.profitUsd, gap.spendUsd)));
+        const volume = totals?.volumeUsdt ?? 0;
+        const share = taker?.volumeUsdt ? (volume / taker.volumeUsdt) * 100 : 0;
         return (
           <div key={market} className="rounded-md border p-3">
             <p className="flex items-center gap-2 font-mono text-xs font-medium tracking-[0.08em]">
               <MarketDot market={market} />
               {market}/USDT
             </p>
-            <p className="num mt-1 text-xl font-medium">
-              {totals?.profitUsdt ? `+${dollars(totals.profitUsdt)}` : "$0.00"}
+            <p className="mt-2 font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+              Volume
             </p>
-            <p className="text-xs text-muted-foreground">
-              {totals?.count ?? 0} {totals?.count === 1 ? "trade" : "trades"} ·{" "}
-              {dollars(totals?.volumeUsdt ?? 0)} taken
+            <p className={`num text-2xl font-medium ${volume ? "text-signal" : ""}`}>
+              {dollars(volume)}
+            </p>
+            <div className="mt-1.5 h-1 rounded-full bg-muted" aria-hidden>
+              <div className="h-1 rounded-full bg-signal" style={{ width: `${share}%` }} />
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {share.toFixed(0)}% of Taker volume · {totals?.count ?? 0}{" "}
+              {totals?.count === 1 ? "trade" : "trades"} ·{" "}
+              {totals?.profitUsdt ? `+${dollars(totals.profitUsdt)}` : "$0.00"} profit
             </p>
             <p className="text-xs text-muted-foreground">
               {gaps.length} {gaps.length === 1 ? "gap" : "gaps"} seen this week
@@ -288,14 +297,15 @@ export function TakerSection({
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <Tile
-            label="Profit"
-            value={taker ? `+${dollars(taker.profitUsdt)}` : "—"}
-            sub={taker ? `${taker.gasCelo.toFixed(3)} CELO of gas` : "indexer not reachable"}
-          />
-          <Tile
             label="Volume taken"
             value={taker ? dollars(taker.volumeUsdt) : "—"}
             sub={taker ? `${taker.count} ${taker.count === 1 ? "trade" : "trades"} on Textile` : ""}
+            lit
+          />
+          <Tile
+            label="Profit"
+            value={taker ? `+${dollars(taker.profitUsdt)}` : "—"}
+            sub={taker ? `${taker.gasCelo.toFixed(3)} CELO of gas` : "indexer not reachable"}
           />
           <Tile
             label="Gaps seen"

@@ -107,7 +107,7 @@ export function VaultSection({ vault }: { vault: Vault | null }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Tile
             label="Vault value"
             value={last ? dollars(last.nav) : "—"}
@@ -127,11 +127,6 @@ export function VaultSection({ vault }: { vault: Vault | null }) {
             label="Independent volume"
             value={dollars(summary.fills.independentVolumeUsdt)}
             sub={`${summary.fills.takers} ${summary.fills.takers === 1 ? "taker" : "takers"}`}
-          />
-          <Tile
-            label="Independent LPs"
-            value={String(summary.lps.independent)}
-            sub={`of ${summary.lps.depositors} · ${dollars(summary.lps.depositedUsdt)} deposited`}
           />
         </div>
         <Fills vault={vault} />

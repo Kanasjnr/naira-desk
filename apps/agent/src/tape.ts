@@ -24,6 +24,8 @@ type Sources = {
   trades: Trade[];
   trader: TraderStatus | null;
   wallet: string;
+  // Every transaction the agent wallet sends carries the attribution tag, so its nonce counts them.
+  taggedTxs?: number | null;
   now: number;
 };
 
@@ -88,6 +90,7 @@ export function buildTape({
   trades,
   trader,
   wallet,
+  taggedTxs = null,
   now,
 }: Sources) {
   const last = decisions.at(-1);
@@ -108,6 +111,7 @@ export function buildTape({
       registry: `eip155:${CELO_CHAIN_ID}:${IDENTITY_REGISTRY}`,
       agentId: Number(AGENT_ID),
       wallet,
+      taggedTxs,
       vault: VAULT,
     },
     generatedAt: now,
