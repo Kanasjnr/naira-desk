@@ -425,6 +425,8 @@ flowchart LR
   API --> WEB
 ```
 
+**Volume is counted once, from fills.** Taker volume is the USD₮ spent in each `Took` event, and vault volume comes from `Fill` logs where the vault is the swapper. The Taker's float never passes through the agent wallet: A sends one tagged transaction and the trade settles inside the Taker. Routing it through A, out to the Taker and back, would add transfers that look like volume without any extra trading, so the desk never does it, and plain transfers never count as volume.
+
 ---
 
 ## 8. User journeys
