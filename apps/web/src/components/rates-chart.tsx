@@ -88,9 +88,9 @@ function Headline({ tape }: { tape: Tape }) {
   const premium = sample?.naira ? (sample.naira / sample.ngnPerUsdt - 1) * 100 : null;
 
   return (
-    <div className="flex flex-wrap items-end gap-x-10 gap-y-3 pt-3">
+    <div className="col-span-2 flex flex-wrap items-end gap-x-10 gap-y-3 pt-3 sm:col-span-1">
       <div>
-        <p className="num text-5xl leading-none font-medium tracking-tight">
+        <p className="num text-4xl leading-none font-medium tracking-tight sm:text-5xl">
           {onchain ? naira(onchain.value) : "—"}
         </p>
         <p className="mt-2 font-mono text-xs text-muted-foreground">

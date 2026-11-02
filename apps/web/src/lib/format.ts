@@ -22,10 +22,11 @@ export const isAddress = (address: string) => /^0x[0-9a-fA-F]{40}$/.test(address
 export const celoscan = (kind: "tx" | "address", value: string) =>
   `https://celoscan.io/${kind}/${value}`;
 
-export const when = (at: number) =>
-  `${lagos(at, { day: "numeric", month: "short" })}, ${lagos(at, { hour: "2-digit", minute: "2-digit" })} WAT`;
+export const date = (at: number) => lagos(at, { day: "numeric", month: "short" });
 
 export const clock = (at: number) => lagos(at, { hour: "2-digit", minute: "2-digit" });
+
+export const when = (at: number) => `${date(at)}, ${clock(at)} WAT`;
 
 export const day = (at: number) => lagos(at, { weekday: "short", day: "numeric" });
 

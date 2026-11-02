@@ -8,9 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { dollars, when } from "@/lib/format";
+import { dollars } from "@/lib/format";
 import type { Tape } from "@/lib/tape";
 import { AddressLink, TxLink } from "./tx-link";
+import { When } from "./when";
 
 const PROVIDERS: Record<string, string> = {
   "x.posts.search": "TikHub X search",
@@ -44,13 +45,17 @@ export function Reviews({ tape }: { tape: Tape }) {
             <TableBody>
               {[...tape.reviews].reverse().map((r) => (
                 <TableRow key={r.txHash}>
-                  <TableCell>{when(r.at)}</TableCell>
                   <TableCell>
-                    {PROVIDERS[r.capability] ?? r.capability} #{r.agentId}
+                    <When at={r.at} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="block max-w-24 truncate sm:max-w-none">
+                      {PROVIDERS[r.capability] ?? r.capability} #{r.agentId}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{r.value}/100</TableCell>
                   <TableCell>
-                    <TxLink hash={r.txHash} />
+                    <TxLink hash={r.txHash} compact />
                   </TableCell>
                 </TableRow>
               ))}
@@ -87,12 +92,17 @@ export function Sales({ tape }: { tape: Tape }) {
             <TableBody>
               {[...tape.sales.recent].reverse().map((s) => (
                 <TableRow key={s.txHash}>
-                  <TableCell>{when(s.at)}</TableCell>
+                  <TableCell>
+                    <When at={s.at} />
+                  </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-2">
                       <AddressLink address={s.payer} />
                       {s.ours && (
-                        <Badge variant="secondary" title="Our demo buyer, not counted as a sale">
+                        <Badge
+                          variant="secondary"
+                          title="The desk's demo buyer, not counted as a sale"
+                        >
                           demo
                         </Badge>
                       )}
@@ -102,7 +112,7 @@ export function Sales({ tape }: { tape: Tape }) {
                     {dollars(Number(s.amount) / 1e6)}
                   </TableCell>
                   <TableCell>
-                    <TxLink hash={s.txHash} />
+                    <TxLink hash={s.txHash} compact />
                   </TableCell>
                 </TableRow>
               ))}

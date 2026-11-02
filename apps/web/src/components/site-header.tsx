@@ -13,6 +13,27 @@ const LINKS = [
 
 export function SiteHeader() {
   return (
+    <>
+      <SiteBar />
+      <nav className="flex gap-5 overflow-x-auto border-b px-4 py-2 font-mono text-xs tracking-[0.12em] whitespace-nowrap text-muted-foreground uppercase sm:hidden">
+        {LINKS.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground"
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
+    </>
+  );
+}
+
+function SiteBar() {
+  return (
     <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-7xl items-center gap-6 px-4">
         <p className="font-mono text-sm font-semibold tracking-[0.18em]">

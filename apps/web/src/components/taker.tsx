@@ -26,6 +26,7 @@ import type { TakerTape } from "@/lib/tape";
 import { Tile } from "./figures";
 import { edge, GapsChart, MARKETS, ProfitChart } from "./taker-charts";
 import { AddressLink, TxLink } from "./tx-link";
+import { When } from "./when";
 
 // The trader scans every 15 seconds, so a status older than this means it stopped.
 const QUIET_MS = 2 * 60_000;
@@ -143,7 +144,7 @@ function LastTrade({ take, now }: { take: Take | undefined; now: number }) {
 
 function Markets({ taker, tape }: { taker: Taker | null; tape: TakerTape | null }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {MARKETS.map((market) => {
         const totals = taker?.markets[market];
         const gaps = tape?.gaps.filter((gap) => gap.market === market) ?? [];
@@ -203,16 +204,18 @@ function Trades({ takes }: { takes: Take[] }) {
             <TableHead>When</TableHead>
             <TableHead>Market</TableHead>
             <TableHead className="text-right">Paid</TableHead>
-            <TableHead className="text-right">Pool paid</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Pool paid</TableHead>
             <TableHead className="text-right">Profit</TableHead>
-            <TableHead className="text-right">Gas</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Gas</TableHead>
             <TableHead>Tx</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {shown.map((take) => (
             <TableRow key={`${take.block}-${take.logIndex}`}>
-              <TableCell>{when(take.at)}</TableCell>
+              <TableCell>
+                <When at={take.at} />
+              </TableCell>
               <TableCell>
                 <span className="flex items-center gap-2">
                   <MarketDot market={take.market} />
@@ -220,18 +223,20 @@ function Trades({ takes }: { takes: Take[] }) {
                 </span>
               </TableCell>
               <TableCell className="text-right tabular-nums">{dollars(take.spent)}</TableCell>
-              <TableCell className="text-right tabular-nums">{dollars(take.received)}</TableCell>
+              <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                {dollars(take.received)}
+              </TableCell>
               <TableCell className="text-right text-signal tabular-nums">
                 +{dollars(take.profit)}{" "}
-                <span className="text-xs text-muted-foreground">
+                <span className="hidden text-xs text-muted-foreground sm:inline">
                   {pct(edge(take.profit, take.spent))}
                 </span>
               </TableCell>
-              <TableCell className="text-right text-muted-foreground tabular-nums">
+              <TableCell className="hidden text-right text-muted-foreground tabular-nums sm:table-cell">
                 {take.gasCelo.toFixed(3)} CELO
               </TableCell>
               <TableCell>
-                <TxLink hash={take.tx} />
+                <TxLink hash={take.tx} compact />
               </TableCell>
             </TableRow>
           ))}
@@ -366,7 +371,7 @@ export function TakerSection({
 
         <Markets taker={taker} tape={tape} />
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-md border p-3">
             <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
               Profit over time
@@ -387,7 +392,7 @@ export function TakerSection({
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <div className="space-y-2">
             <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
               Trades
