@@ -56,7 +56,9 @@ export function Dashboard({
         <Ticker tape={tape} vault={vault.data} taker={taker.data} stale={stale} />
       </div>
       {tape ? (
-        <div className={`grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] ${fade(stale)}`}>
+        <div
+          className={`grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] ${fade(stale)}`}
+        >
           <RatesChart tape={tape} />
           <div className="flex flex-col gap-3">
             <StatusCard tape={tape} />
@@ -82,7 +84,7 @@ export function Dashboard({
       {tape && (
         <div className={`space-y-3 ${fade(stale)}`}>
           <DecisionTape tape={tape} />
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <Reviews tape={tape} />
             <Sales tape={tape} />
           </div>
