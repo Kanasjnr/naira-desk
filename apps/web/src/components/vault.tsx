@@ -16,10 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ago, dollars, naira, when } from "@/lib/format";
+import { ago, dollars, naira } from "@/lib/format";
 import type { Vault } from "@/lib/vault";
 import { Tile } from "./figures";
 import { AddressLink, TxLink } from "./tx-link";
+import { When } from "./when";
 
 const SHOWN = 20;
 
@@ -38,33 +39,39 @@ function Fills({ vault }: { vault: Vault }) {
         <TableRow>
           <TableHead>When</TableHead>
           <TableHead>Desk</TableHead>
-          <TableHead className="text-right">Naira</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Naira</TableHead>
           <TableHead className="text-right">USDT</TableHead>
-          <TableHead className="text-right">Rate</TableHead>
-          <TableHead>Taker</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Rate</TableHead>
+          <TableHead className="hidden sm:table-cell">Taker</TableHead>
           <TableHead>Tx</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {fills.map((fill) => (
           <TableRow key={`${fill.block}-${fill.logIndex}`}>
-            <TableCell>{when(fill.at)}</TableCell>
-            <TableCell>{fill.side === "buy" ? "Bought naira" : "Sold naira"}</TableCell>
-            <TableCell className="text-right tabular-nums">{naira(fill.cngn)}</TableCell>
-            <TableCell className="text-right tabular-nums">{fill.usdt.toFixed(2)}</TableCell>
-            <TableCell className="text-right tabular-nums">{naira(fill.ngnPerUsdt)}</TableCell>
             <TableCell>
+              <When at={fill.at} />
+            </TableCell>
+            <TableCell>{fill.side === "buy" ? "Bought naira" : "Sold naira"}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {naira(fill.cngn)}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">{fill.usdt.toFixed(2)}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {naira(fill.ngnPerUsdt)}
+            </TableCell>
+            <TableCell className="hidden sm:table-cell">
               <span className="flex items-center gap-2">
                 <AddressLink address={fill.filler} />
                 {fill.ours && (
-                  <Badge variant="secondary" title="Our own wallet, left out of volume">
+                  <Badge variant="secondary" title="The desk's own wallet, left out of volume">
                     ours
                   </Badge>
                 )}
               </span>
             </TableCell>
             <TableCell>
-              <TxLink hash={fill.tx} />
+              <TxLink hash={fill.tx} compact />
             </TableCell>
           </TableRow>
         ))}
@@ -95,7 +102,7 @@ export function VaultSection({ vault }: { vault: Vault | null }) {
         <CardTitle>The vault</CardTitle>
         <CardDescription>
           The community-funded float the desk quotes from on Textile. Every number here is read from
-          Celo, and trades from our own wallets are left out of volume and LP counts.
+          Celo, and trades from the desk's own wallets are left out of volume and LP counts.
         </CardDescription>
         {summary.paused && (
           <CardAction>
