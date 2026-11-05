@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Buyer, Message } from "./buy.ts";
 import { PaidCallError } from "./buy.ts";
-import { checkNairaRisk, NEWS_QUERY, parseRisk, receiptsOf } from "./risk.ts";
+import {
+  checkNairaRisk,
+  createRiskCheck,
+  NEWS_QUERY,
+  parseRisk,
+  readPosts,
+  receiptsOf,
+} from "./risk.ts";
 
 const post = (text: string) => ({
   type: "tweet",
@@ -102,12 +109,72 @@ describe("checkNairaRisk", () => {
     expect(check).toMatchObject({
       level: "elevated",
       reason: "rating failed: buy /cencori failed: 500",
+      ratingFailed: true,
     });
     expect(check.calls.at(-1)).toEqual({
       capability: "cencori.v1.chat.completions",
       txHash: "0xpaid",
       ok: false,
     });
+  });
+
+  it("reads the posts itself instead of paying for a rating", async () => {
+    const { buyer, asked } = fakeBuyer([post("naira steady")], [post("BDC rate ₦1,420")], "{}");
+    expect(await checkNairaRisk(buyer, { rate: false })).toEqual({
+      level: "low",
+      reason: "AI read paused; no warning signs in 2 posts",
+      posts: 2,
+      calls: [
+        { capability: "x.posts.search", txHash: "0xnews", ok: true, posts: 1 },
+        { capability: "x.posts.search", txHash: "0xrates", ok: true, posts: 1 },
+      ],
+    });
+    expect(asked).toEqual([]);
+  });
+});
+
+describe("readPosts", () => {
+  it("is careful when a post mentions a warning sign, and never halts on words alone", () => {
+    expect(readPosts([post("routine"), post("CBN to Devalue the naira, sources say")])).toEqual({
+      level: "elevated",
+      reason: "AI read paused; 1 of 2 posts mention devalu",
+    });
+    expect(readPosts([post("markets suspended, panic at the BDCs")]).level).toBe("elevated");
+  });
+
+  it("calls routine posts low", () => {
+    expect(readPosts([post("naira closes at ₦1,378 today")])).toEqual({
+      level: "low",
+      reason: "AI read paused; no warning signs in 1 post",
+    });
+  });
+});
+
+describe("createRiskCheck", () => {
+  it("stops paying Cencori for 12 hours after it fails, then tries again", async () => {
+    const { buyer, asked } = fakeBuyer(
+      [post("naira")],
+      [],
+      new PaidCallError("buy /cencori failed: 400", "0xpaid"),
+    );
+    let clock = 0;
+    const check = createRiskCheck(buyer, () => clock);
+
+    expect((await check()).reason).toBe("rating failed: buy /cencori failed: 400");
+    clock += 2 * 60 * 60_000;
+    expect((await check()).reason).toBe("AI read paused; no warning signs in 1 post");
+    expect(asked).toHaveLength(1);
+    clock += 10 * 60 * 60_000;
+    await check();
+    expect(asked).toHaveLength(2);
+  });
+
+  it("keeps asking when Cencori answers, even unreadably", async () => {
+    const { buyer, asked } = fakeBuyer([post("naira")], [], "I think it's fine");
+    const check = createRiskCheck(buyer, () => 0);
+    await check();
+    await check();
+    expect(asked).toHaveLength(2);
   });
 });
 

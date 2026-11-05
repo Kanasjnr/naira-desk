@@ -13,6 +13,7 @@ export { type Ledger, openLedger, type Purchase } from "./ledger.ts";
 export {
   type Call,
   checkNairaRisk,
+  createRiskCheck,
   NEWS_QUERY,
   type QuotedRates,
   RATES_QUERY,
