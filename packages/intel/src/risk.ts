@@ -14,6 +14,8 @@ export type RiskCheck = {
   rates?: QuotedRates;
   // The start of a rating the agent couldn't read, kept for debugging.
   unreadable?: string;
+  // Cencori itself failed, as opposed to answering something unreadable.
+  ratingFailed?: true;
 };
 
 export const NEWS_QUERY =
@@ -83,10 +85,27 @@ const line = (post: Post, i: number) =>
 const failedCall = (capability: string, error: unknown): Call[] =>
   error instanceof PaidCallError ? [{ capability, txHash: error.txHash, ok: false }] : [];
 
+// What a reader would flag without the model: devaluation, new rules, halts or panic.
+const WARNING =
+  /devalu|unif(y|ied|ication)|float(s|ed|ing)? the naira|new (fx|forex) (rule|policy|guideline)|circular|halt|suspend|ban(s|ned)?\b|panic|crash|plunge|record low/i;
+
+// Without the model, the agent reads the posts itself. A warning word makes it careful; it never
+// goes as far as halting on keywords alone.
+export function readPosts(posts: Post[]): Pick<RiskCheck, "level" | "reason"> {
+  const flagged = posts.filter((post) => WARNING.test(post.text ?? ""));
+  const count = `${posts.length} ${posts.length === 1 ? "post" : "posts"}`;
+  return flagged.length > 0
+    ? {
+        level: "elevated",
+        reason: `AI read paused; ${flagged.length} of ${count} mention ${flagged[0]?.text?.match(WARNING)?.[0].toLowerCase()}`,
+      }
+    : { level: "low", reason: `AI read paused; no warning signs in ${count}` };
+}
+
 // Buys recent naira news and street-rate posts, then pays Cencori to rate the risk and
 // read off the quoted rates. Anything it can't read counts as elevated, so a failure
-// makes the agent more careful, never less.
-export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
+// makes the agent more careful, never less. With `rate: false` it reads the posts itself.
+export async function checkNairaRisk(buyer: Buyer, { rate = true } = {}): Promise<RiskCheck> {
   const searches = await Promise.allSettled([
     buyer.searchX(NEWS_QUERY),
     buyer.searchX(RATES_QUERY),
@@ -111,6 +130,7 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
 
   const posts = news.length + rates.length;
   if (posts === 0) return { level: "low", reason: "no recent posts", posts, calls };
+  if (!rate) return { ...readPosts([...news, ...rates]), posts, calls };
 
   try {
     const answer = await buyer.chat([
@@ -132,8 +152,28 @@ export async function checkNairaRisk(buyer: Buyer): Promise<RiskCheck> {
     };
   } catch (error) {
     calls.push(...failedCall(RATING, error));
-    return { level: "elevated", reason: `rating failed: ${briefError(error)}`, posts, calls };
+    return {
+      level: "elevated",
+      reason: `rating failed: ${briefError(error)}`,
+      posts,
+      calls,
+      ratingFailed: true,
+    };
   }
+}
+
+const RATING_PAUSE = 12 * 60 * 60_000;
+
+// Cencori, in closed beta, can fail every call for days while buy still charges for each one.
+// After a failed rating the agent reads the posts itself for 12 hours, then tries Cencori again.
+export function createRiskCheck(buyer: Buyer, now = Date.now) {
+  let failedAt = Number.NEGATIVE_INFINITY;
+  return async () => {
+    const rate = now() - failedAt >= RATING_PAUSE;
+    const check = await checkNairaRisk(buyer, { rate });
+    if (check.ratingFailed) failedAt = now();
+    return check;
+  };
 }
 
 // Decisions logged before calls were recorded kept a plain list of receipts.
