@@ -6,7 +6,7 @@ import {
   TAKER,
   tokenBalance,
 } from "@naira-desk/chain";
-import { checkNairaRisk, createBuyer, openLedger } from "@naira-desk/intel";
+import { createBuyer, createRiskCheck, openLedger } from "@naira-desk/intel";
 import { cngnSources, type FairValue } from "@naira-desk/pricing";
 import { appendJsonl, readJsonl, USDT } from "@naira-desk/shared";
 import { formatUnits, http } from "viem";
@@ -49,8 +49,9 @@ const wallet = createTaggedWalletClient(await readKeyFile(files.key), http(rpcUr
 const ledger = await openLedger(files.ledger);
 const buyer = createBuyer({ account: wallet.account, ledger, readBalance: tokenBalance(client) });
 const decisions = await openDecisions(files.decisions);
+const checkRisk = createRiskCheck(buyer);
 const desk = createRiskDesk({
-  check: async () => againstStreet(await checkNairaRisk(buyer), pricer.current()),
+  check: async () => againstStreet(await checkRisk(), pricer.current()),
   log: decisions,
 });
 const reviewer = await createReviewer({
